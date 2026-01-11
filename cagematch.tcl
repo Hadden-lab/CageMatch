@@ -1,15 +1,7 @@
 # cagematch.tcl --
 # Developed by Santiago Antolinez
 # Lab of Dr. Jodi A. Hadden-Perilla (jhadden@udel.edu)
-# Draw Polyhedron code + some functionality (Capsid Volume/ Sphericity)
-# Code is able to draw 6 disctinct polyhedrons based on the following keywords:
-#       -icosahedron      -- Icosahedron, vertices correspond to pentavalent capsomers          
-#       -capsomers        -- Triangular-faced polyhedra, vertices correspond to capsomer centers
-#       -geodesic         -- Geodesic icosahedron, vertices correspond to symmetry axes   
-#       -kites            -- Disdyakis triacontahedron, (kite-faced polyhedra)                  
-#       -goldberg         -- Goldberg polyhedra (polyhedra with pentagonal and hexagonal faces) 
-#       -kis              -- Hexapentakis goldberg polyhedra (apply kis operator to goldberg)
-
+ 
 package require struct::list
 package require struct::set
 
@@ -18,44 +10,54 @@ package provide cagematch 1.0
 set clusdir [file dirname [file normalize [info script]]]
 
 proc InfoCageMatch {} {
-    vmdcon -info "CageMatch is a VMD plugin for analyzing protein cages through"
-    vmdcon -info "polyhedral representations + some functionality."
+    vmdcon -info "The CageMatch plugin is designed geometric analysis of macromolecular"
+    vmdcon -info "nanocages based on fitting polyhedral surfaces to the structure. "
     vmdcon -info ""
     vmdcon -info "Available functions include:"
-    vmdcon -info "  - DrawPolyhedron: Draw polyhedral representation of given container"
-    vmdcon -info "  - ViewClusterPoints: Vizualize the initial clustering points as"
-    vmdcon -info "                       determined by given atomselection"
-    vmdcon -info "  - ViewClusterMembers: Make representation of showing the cluster"
-    vmdcon -info "                        constituents for a given vertex ID"
-    vmdcon -info "  - Member2Vertex: Return list of vertex IDs to which given"
-    vmdcon -info "                   segnames/fragments belong to for the current polyhedron"
-    vmdcon -info "  - Vertex2Member: Return list of cluster members for given vertices"
-    vmdcon -info "  - SavePoly: Save polyhedral representation to tcl file"
-    vmdcon -info "  - LoadPoly: Load polyhdral representation from file"
-    vmdcon -info "  - SurfaceArea: Calculate surface area of current representation"
-    vmdcon -info "  - RepVolume: Calculate volume of current representation"
-    vmdcon -info "  - Sphericity: Calculate sphericity of current representation"
-    vmdcon -info "  - VertexDistance: Return distance between two vertices"
-    vmdcon -info "  - VertexAngle: Return angle formed between three vertices"
-    vmdcon -info "  - SetVertexColors: Change vertex colors"
-    vmdcon -info "  - StopPoly: Disable the trace on the polyhedral representation"
-    vmdcon -info "  - InfoCageMatch: Print this help text"
+    vmdcon -info "- DrawPolyhedron: Perform vertex detection clustering on user-defined atomselection"
+    vmdcon -info "                  to map segnames/fragments to local symmetry axes and draw"
+    vmdcon -info "                  specified polyhedron."
+    vmdcon -info "- ViewClusterPoints: Visualize points (atomselection centers) to be used as starting"
+    vmdcon -info "                     sets for vertex detection clustering."
+    vmdcon -info "- ViewClusterMembers: Generate graphical representation of all the segnames/fragments"
+    vmdcon -info "                      associated with given vertex IDs."
+    vmdcon -info "- Member2Vertex: Return list of vertex IDs associated with given segnames/fragments."
+    vmdcon -info "- Vertex2Member: Return list of segnames/fragments associated with given vertex IDs."
+    vmdcon -info "- SavePolyhedron: Write current vertex definitions and polyhedron connectivity to file."
+    vmdcon -info "- LoadPolyhedron: Read vertex definitions and polyhedron connectivity from file"
+    vmdcon -info "- PolyhedronNet: Generate 2D Goldberg polyhedron net projection."
+    vmdcon -info "- SurfaceArea: Return surface area of current polyhedron."
+    vmdcon -info "- Volume: Return volume of current polyhedron."
+    vmdcon -info "- Sphericity: Return sphericity of current polyhedron."
+    vmdcon -info "- VertexDistance: Return distance between two given vertexIDs"
+    vmdcon -info "- VertexAngle: For three given vertex IDs i, j, and k, return the angle"
+    vmdcon -info "               between the vector j-i and the vector j-k."
+    vmdcon -info "- Faceting: Return the average protrusion angle for icosahedral symmetry axes"
+    vmdcon -info "            (the angle between kite-plane normal and the respective local"
+    vmdcon -info "            symmetry axis, averaged over all 60 kites)."
+    vmdcon -info "- SetVertexColors: Modify vertex color legend."
+    vmdcon -info "- StopPolyhedron: Stop updating polyhedron in real time."
+    vmdcon -info "- InfoCageMatch: Print this help text."
+    vmdcon -info ""
     error ""
 }
 
 proc __VCMUsage__ {} {
-    vmdcon -info " Make representation selecting the constituents of a given vertices"
-    vmdcon -info " Usage: ViewClusterMembers <VertexID list> \[options\]"
-    vmdcon -info ""
-    vmdcon -info " Options are:"
-    vmdcon -info "   -mol <molid>     -- Molid. Default: top"
-    vmdcon -info "   -rep <rep_style> -- Rendering method. Defaults to current default method"
-    vmdcon -info "   -sel <selection> -- Additional atomselection. Default: all"
-    vmdcon -info "   -color <coloring_method> -- Coloring method. Defaults to current default color"
-    vmdcon -info "   -material <material_name> -- Material setting. Defaults to current default material"
+    vmdcon -info "Generate graphical representation of all the segnames/fragments associated"
+    vmdcon -info "with the given vertex IDs."
+    vmdcon -info "Usage: ViewClusterMembers <VertexID list> \[options\]"
+    vmdcon -info  “”
+    vmdcon -info "Options are:"
+    vmdcon -info "-mol <molid>     -- Molid. Default: top."
+    vmdcon -info "-rep <rep_style> -- Rendering method. Defaults to current default method."
+    vmdcon -info "-sel <selection> -- Additional atomselection defining graphical"
+    vmdcon -info "                    representation. Default: all."
+    vmdcon -info "-color <coloring_method> -- Coloring method. Defaults to current default"
+    vmdcon -info "                            color."
+    vmdcon -info "-material <material_name> -- Material setting. Defaults to current default"
+    vmdcon -info "                             material."
     vmdcon -info ""
     error ""
-
 }
 
 proc ViewClusterMembers {args} {
@@ -121,20 +123,27 @@ proc ViewClusterMembers {args} {
     mol addrep $molid 
 }
 
+proc __VCPUsage__ {} {
+    vmdcon -info "Visualize points (center of atomselections) to be used as starting sets for"
+    vmdcon -info "vertex detection clustering. "
+    vmdcon -info "Usage: ViewClusterPoints <selection> \[options\]  "
+    vmdcon -info ""
+    vmdcon -info "Options are: "
+    vmdcon -info "-mol <molid>         -- Molid on which to draw. Default: top."
+    vmdcon -info "-cagesel <selection> -- Atomselection defining the cage. Default: protein."
+    vmdcon -info "-clusterby <segname/fragment> -- Unique chain identifier used in vertex"
+    vmdcon -info "                                 detection clustering."
+    vmdcon -info "-color <color>       -- sphere color. Default: black."
+    vmdcon -info "-rad <radius>        -- sphere radius. Default: 4."
+    vmdcon -info "-res <resolution>    -- sphere resolution. Default: 20."
+    vmdcon -info ""
+    error ""
+
+}
+
 proc ViewClusterPoints {args} {
     if {[llength $args]==0} {
-	vmdcon -info " Draw spheres representing the location of points used in inital clustering for a given selection"
-	vmdcon -info " Usage: ViewClusterPoints <selection> \[options\]"
-	vmdcon -info ""
-	vmdcon -info " Options are:"
-	vmdcon -info "   -mol <molid>         -- Molid on which to draw. Default: top"
-	vmdcon -info "   -cagesel <selection> -- Atomselection defining container. Default: protein"
-	vmdcon -info "   -clusterby <segname/fragment> -- Variable to use for unique identification of chains when clustering"
-	vmdcon -info "   -color <color>       -- Color of spheres. Default: black"
-	vmdcon -info "   -rad <radius>        -- Radius of spheres. Default: 4"
-	vmdcon -info "   -res <resolution>    -- Resolution used when drawing spheres. Default: 20"
-	vmdcon -info ""
-	error ""
+	__VCPUsage__
     }
 
     set selection [lindex $args 0]
@@ -195,17 +204,7 @@ proc ViewClusterPoints {args} {
     $all delete
     if {[llength $args]>0 || ($clusterby!="segname" && $clusterby!="fragment")} {
 	if {[llength $args]>0} {vmdcon -err  "Unrecognized option: $args"}
-	vmdcon -info " Usage: ViewClusterPoints <selection> \[options\]"
-	vmdcon -info ""
-	vmdcon -info " Options are:"
-	vmdcon -info "   -mol <molid>     -- Molid on which to draw polyhedra representation. Default: top"
-	vmdcon -info "   -cagesel <selection> -- Atomselection defining container. Default: protein"
-	vmdcon -info "   -clusterby <segname/fragment> -- Variable to use for unique identification of chains when clustering"
-	vmdcon -info "   -color <color>       -- Color of spheres. Default: black"
-	vmdcon -info "   -rad <radius>        -- Radius of spheres. Default: 4"
-	vmdcon -info "   -res <resolution>    -- Resolution used when drawing spheres. Default: 20"
-	vmdcon -info ""
-	error ""
+	__VCPUsage__
     }
 
     graphics $molid delete all
@@ -219,14 +218,14 @@ proc ViewClusterPoints {args} {
     
 }
 
-proc StopPoly {args} {
+proc StopPolyhedron {args} {
     if {[llength $args] != 1 || ( $args != 1 && $args !=0)} {
-	vmdcon -info " Disable polyhedra trace"
-	vmdcon -info " Usage: StopPoly <delpoly>"
+	vmdcon -info "Stop updating polyhedron in real time. "
+	vmdcon -info "Usage: StopPolyhedron <delpoly>"
 	vmdcon -info ""
 	vmdcon -info " <delpoly> options are:"
 	vmdcon -info "   1 -- Delete last drawn polyhedron"
-	vmdcon -info "   0 -- Do not delete last drawn polyhedron"
+	vmdcon -info "   0 -- Keep last drawn polyhedron"
 	vmdcon -info ""
 	error ""
     }
@@ -239,55 +238,73 @@ proc StopPoly {args} {
     set TRACEMOLID $::CageMatch::TRACEMOLID
     if {$TRACEMOLID=="top"} {set TRACEMOLID [molinfo top]}
     set TRACEENABLED $::CageMatch::TRACEENABLED
-
+#     puts "TRACEENABLED $TRACEENABLED"
+#     puts "::CageMatch::TRACEENABLED $::CageMatch::TRACEENABLED"
     if {$args} {
 	::CageMatch::CleanLast $TRACEMOLID
     }
     
     if {$TRACEENABLED} {
-	uplevel trace remove variable vmd_frame($TRACEMOLID) write ::CageMatch::TracerFunc
+#	puts "Removing trace"
+	uplevel {trace remove variable vmd_frame($::CageMatch::TRACEMOLID) write ::CageMatch::TracerFunc}
 	set ::CageMatch::TRACEENABLED 0
     }
     if {$::CageMatch::TRACECOLOR} {set ::CageMatch::TRACECOLOR 0}
     return
 }
 
-proc __DrawPolyhedron_usage__ {} {
+proc __DrawPolyhedronUsage__ {} {
+    vmdcon -info "Perform vertex detection clustering on user-defined atomselection to map"
+    vmdcon -info "segnames/fragments to local symmetry axes and draw specified polyhedron."
     vmdcon -info "Usage: DrawPolyhedron <polyhedron> \[options\]"
-    vmdcon -info "Available polyhedra representations (choose one):"
-    vmdcon -info "   icosahedron      -- Icosahedron, vertices correspond to pentavalent capsomers          "
-    vmdcon -info "   capsomers        -- Triangular-faced polyhedra, vertices correspond to capsomer centers"
-    vmdcon -info "   geodesic         -- Geodesic icosahedron, vertices correspond to symmetry axes   "
-    vmdcon -info "   kites            -- Disdyakis triacontahedron, (kite-faced polyhedra)                  "
-    vmdcon -info "   goldberg         -- Goldberg polyhedra (polyhedra with pentagonal and hexagonal faces) "
-    vmdcon -info "   kis              -- Hexapentakis goldberg polyhedra (apply kis operator to goldberg)   "
     vmdcon -info ""
-    vmdcon -info "Other Options (default values mentioned are for the first invocation, consecutive invocations default to previously set values):"
-    vmdcon -info "   -mol <molid>     -- Molid on which to draw polyhedra representation. Default: top"
-    vmdcon -info "   -draw <VEF>      -- Combination of strings V E F determines whether to draw (V)ertices,(E)dges, and/or (F)aces. Default: VE"
-    vmdcon -info "   -sel <selection> -- Atomselection to use when updating representation. Default: name CA"
-    vmdcon -info "   -recalc          -- Force calculation of clusters"    
-    vmdcon -info "   -noicosa         -- No icosahedral symmetry present, disables representations related to icosahedral symmetry"
-    vmdcon -info "   -icosa           -- Icosahedral symmetry present (default)"
-    vmdcon -info "   -cagesel <selection> -- Atomselection defining container. Default: protein"
-    vmdcon -info "   -clusterby <segname/fragment> -- Variable to use for unique identification of chains when clustering"
-    vmdcon -info "   -clustersizes <list>   -- List of cluster sizes in which to group chains. Default: {5 6}"
-    vmdcon -info "   -gcenters <on/off> -- Draw face centers for goldberg representation. Deafault: off"
+    vmdcon -info "Available polyhedra (choose one):"
+    vmdcon -info "icosahedron  -- Regular icosahedron. Vertices represent five-fold"
+    vmdcon -info "                icosahedral symmetry axes."
+    vmdcon -info "triangulated -- Pentakis icosidodecahedron. Vertices represent five-fold"
+    vmdcon -info "                and two-fold icosahedral symmetry axes."
+    vmdcon -info "kites        -- Disdyakleetope triacontahedron. Vertices represent the five-fold,"
+    vmdcon -info "                two-fold, and three fold icosahedral symmetry axes."
+    vmdcon -info "geodesic     -- Triangular-faced polyhedron. Vertices represent capsomer centers."
+    vmdcon -info "goldberg     -- Polyhedron composed of pentagonal and hexagonal faces. Dual of"
+    vmdcon -info "                the geodesic polyhedron. Vertices represent the three-fold"
+    vmdcon -info "                conjunction of capsomers. "
+    vmdcon -info "kleetope     -- Triangular-faced polyhedron. Kis of the Goldberg polyhedron."
+    vmdcon -info "                Vertices represent the centers and three-fold conjunctions of"
+    vmdcon -info "                capsomers."
+    vmdcon -info ""
+    vmdcon -info "Options (default values mentioned are for the first invocation,"
+    vmdcon -info "consecutive invocations default to previously set values):"
+    vmdcon -info ""
+    vmdcon -info "-mol <molid>     -- Molid on which to draw the polyhedron. Default: top"
+    vmdcon -info "-draw <VEF>      -- Combination of strings V E F determines whether to draw"
+    vmdcon -info "                    (V)ertices, (E)dges, and/or (F)aces. Default: VE"
+    vmdcon -info "-sel <selection> -- Atomselection used in vertex detection clustering. Default: name CA."
+    vmdcon -info "-recalc          -- Force vertex detection clustering."
+    vmdcon -info "-noicosa         -- No icosahedral symmetry present, disables use of"
+    vmdcon -info "                    icosahedron, kites, and triangulated polyhedra."
+    vmdcon -info "-icosa           -- Icosahedral symmetry present (default)"
+    vmdcon -info "-cagesel <selection> -- Atomselection defining the cage. Default: protein."
+    vmdcon -info "-clusterby <segname/fragment> -- Unique chain identifier used in vertex"
+    vmdcon -info "                                 detection clustering."
+    vmdcon -info "-clustersizes <list>   -- List of containing the number of elements per cluster allowed"
+    vmdcon -info "                          when performing vertex detection clustering. Default: {5 6}."
+    vmdcon -info "-gcenters <on/off> -- Draw face centers for the Goldberg polyhedron. Default: off."
     vmdcon -info ""
     error ""
 }
 
 proc DrawPolyhedron {args} {
     if {![llength $args]} {
-	__DrawPolyhedron_usage__
+	__DrawPolyhedronUsage__
     }
 
     set Ttype [lindex $args 0]
     set args [lreplace $args 0 0]
-    set allowedTypes {capsomers pentamers geodesic triangles kites twofold hexamers icosahedron goldberg kis}
+    set allowedTypes {geodesic pentamers triangulated triangles kites twofold hexamers icosahedron goldberg kleetope}
     if {[lsearch $allowedTypes $Ttype]==-1} {
 	vmdcon -err "Unrecognized option: $Ttype"
-	__DrawPolyhedron_usage__	
+	__DrawPolyhedronUsage__	
     }
     set flag [lsearch $args "-draw"]
     if { $flag != -1} {
@@ -302,7 +319,7 @@ proc DrawPolyhedron {args} {
 	set gcenters [lindex $args [expr $flag +1]]
 	set args [lreplace $args $flag [expr $flag +1]]
 	if {$gcenters!= "on" && $gcenters !="off"} {
-	    __DrawPolyhedron_usage__	
+	    __DrawPolyhedronUsage__	
 	} elseif {$gcenters == "on"} {
 	    set ::CageMatch::GOLDBERGCENTER 1
 	} else {
@@ -336,7 +353,7 @@ proc DrawPolyhedron {args} {
     }
 
     if { $clusterby!="segname" && $clusterby!="fragment"} {
-	__DrawPolyhedron_usage__
+	__DrawPolyhedronUsage__
     }
 
     if {$clusterby != $::CageMatch::CLUSTERBY} {
@@ -382,7 +399,7 @@ proc DrawPolyhedron {args} {
     set flag2 [lsearch $args "-noicosa"]
 
     if { $flag1 != -1 && $flag2 != -1} {
-	__DrawPolyhedron_usage__
+	__DrawPolyhedronUsage__
     } elseif {$flag2 != -1} {
 	set args [lreplace $args $flag2 $flag2]
 	set icosa 0
@@ -393,8 +410,8 @@ proc DrawPolyhedron {args} {
 	set icosa $::CageMatch::TRACEICOSA
     }
 
-    if {!$icosa && ( $Ttype =="geodesic" || $Ttype == "kites" || $Ttype =="pentamers" ||$Ttype =="icosahedron") } {
-	__DrawPolyhedron_usage__
+    if {!$icosa && ( $Ttype =="triangulated" || $Ttype == "kites" || $Ttype =="pentamers" ||$Ttype =="icosahedron") } {
+	__DrawPolyhedronUsage__
     }
     if {$icosa != $::CageMatch::TRACEICOSA} {
 	set  ::CageMatch::INITCLUSTER 0
@@ -403,7 +420,7 @@ proc DrawPolyhedron {args} {
     if {!$::CageMatch::TRACECOLOR} {set ::CageMatch::TRACECOLOR 1}
     if {[llength $args] >0} {
 	vmdcon -err "Unrecognized option: $args"
-	__DrawPolyhedron_usage__
+	__DrawPolyhedronUsage__
     }
     
     vmdcon -info "Drawing polyhedron $Ttype with options:"
@@ -426,6 +443,7 @@ namespace eval ::CageMatch {
     variable GoldbergIDs
     variable GoldbergPentIDs
     variable GoldbergHexIDs
+    variable Capsomers2Goldberg
     
     # Arrays with vertex info:
     variable ClusterMembers
@@ -715,7 +733,7 @@ proc ::CageMatch::JoinNN {closest_clusters clusters datapoints} {
     return [list $clusters $new_cluster $minidx $minclosest $minj]
 }
 
-# Cluster Chains based on $CLUSTERBY (segnames or fragment) to get vertices for polihedra 
+# Vertex detection clustering using  $CLUSTERBY (segnames or fragment) to get vertices for polihedra 
 
 #    Basic cluster analysis:
 #    - A dataset (a list of lists) consists of records describing the data
@@ -741,7 +759,7 @@ proc ::CageMatch::JoinNN {closest_clusters clusters datapoints} {
 #    method.
 #
 # 
-# Calculates the vertices for each of the capsomers, sets the center (according to
+# Calculates the vertices for each of capsomer, sets the center (according to
 # the given selection) and sets makes a list of the segnames of every chain that
 # make up a given vertex
 proc ::CageMatch::ClusterBySegmentsOpt {{molid top} {frame now} {selection "name CA"}} {
@@ -997,15 +1015,15 @@ proc ::CageMatch::DistBasedNeighbours {} {
 		lappend HexamerIDs $i
 	    }
 	}
-	vmdcon -info "There are [llength $PentamerIDs] pentamers"
-	vmdcon -info "There are [llength $HexamerIDs] hexamers"
+	vmdcon -info "There are [llength $PentamerIDs] pentavalent capsomers"
+	vmdcon -info "There are [llength $HexamerIDs] hexavalent capsomers"
 	CalcNeighbours
     }
 }
 
 # Calculates the neighbour list for each capsomer vertex
 # neighbour lists here are used for pentamers,
-# capsomers, and hexamers polyhedrons
+# geodesic, and hexamers polyhedrons
 proc ::CageMatch::CalcNeighbours {} {
     variable ClusterCenters
     variable ClusterNeighbours
@@ -1338,6 +1356,8 @@ proc ::CageMatch::GoldbergVertex {{molid top} {frame now} {selection "name CA"}}
     variable HybridNeighbours
     variable GoldbergNeighbours
     variable GoldbergTriNeighbours
+    variable Capsomers2Goldberg
+    
     array unset HybridNeighbours *
     array unset GoldbergNeighbours *
     array unset GoldbergTriNeighbours *
@@ -1345,8 +1365,8 @@ proc ::CageMatch::GoldbergVertex {{molid top} {frame now} {selection "name CA"}}
     vmdcon -info "Calculating goldberg vertices"
     set NewStart [llength [lsort -unique [concat $PentamerIDs $HexamerIDs $TrifoldIDs $TwofoldIDs]]]
     incr NewStart
-    set TriangleList [LocateTriangles capsomers]
-    lassign  [SetupTypes capsomers 1] indexList neighbourList
+    set TriangleList [LocateTriangles geodesic]
+    lassign  [SetupTypes geodesic 1] indexList neighbourList
 
     set all [atomselect $molid "$CAGESEL"]
     set segNames [lsort -unique [$all get $CLUSTERBY]]
@@ -1452,6 +1472,8 @@ proc ::CageMatch::GoldbergVertex {{molid top} {frame now} {selection "name CA"}}
     array set GoldbergTriNeighbours [array get GoldbergNeighbours]
     set GoldbergPentIDs {}
     set GoldbergHexIDs {}
+
+    array unset Capsomers2Goldberg *
     # set the pentamers for Goldberg as the center of all hybrid neighbours,same for hexamers
     foreach i $PentamerIDs {
         # set members {}
@@ -1461,6 +1483,7 @@ proc ::CageMatch::GoldbergVertex {{molid top} {frame now} {selection "name CA"}}
 	# }
 	set GoldbergTriNeighbours($count) $HybridNeighbours($i)
 	set GoldbergNeighbours($count) {}
+	set Capsomers2Goldberg($i) $count
 	# set members  [lsort -unique $members]
 	# set sel [atomselect $molid "($selection) and $CLUSTERBY $members"]
 	# set ClusterCenters($count) [measure center $sel]
@@ -1478,6 +1501,7 @@ proc ::CageMatch::GoldbergVertex {{molid top} {frame now} {selection "name CA"}}
 	# }
 	set GoldbergTriNeighbours($count) $HybridNeighbours($i)
 	set GoldbergNeighbours($count) {}
+	set Capsomers2Goldberg($i) $count
 	# set members  [lsort -unique $members]
 	# set sel [atomselect $molid "($selection) and $CLUSTERBY $members"]
 	# set ClusterCenters($count) [measure center $sel]
@@ -1494,7 +1518,7 @@ proc ::CageMatch::GoldbergVertex {{molid top} {frame now} {selection "name CA"}}
 # polyhedra representation, then draws said representation
 proc ::CageMatch::RunPolygon { Ttype {drawtype "VE"} {molid top} {frame now} {selection "name CA" }} {
     variable INITCLUSTER
-    set allowedTypes {capsomers pentamers geodesic triangles kites twofold hexamers icosahedron goldberg kis}
+    set allowedTypes {geodesic pentamers triangulated triangles kites twofold hexamers icosahedron goldberg kleetope}
     if {[lsearch $allowedTypes $Ttype]==-1} {
 	error "AllowedTypes are  $allowedTypes"	
     }
@@ -1557,7 +1581,7 @@ proc ::CageMatch::SelectCluster {{molid top} {frame now} {selection "name CA"}} 
 }
 
 # Update the centers for a given polyhedron reprensentation
-proc ::CageMatch::UpdateVertices {{Ttype "capsomers"} {frame now} {molid top} {selection "name CA"}} {
+proc ::CageMatch::UpdateVertices {{Ttype "geodesic"} {frame now} {molid top} {selection "name CA"}} {
     variable ClusterMembers
     variable ClusterCenters
     variable CageCenterSelection
@@ -1661,7 +1685,7 @@ proc Vertex2Member {args} {
 	error "Running DrawPolyhedron before this is required"
     }
     if {[llength $args]!=1} {
-	vmdcon -info "Return cluster members of given vertices"
+	vmdcon -info "Return list of segnames/fragments associated with given vertex IDs."
 	vmdcon -info "Usage: Vertex2Member <VertexID list>"
 	error ""
     }
@@ -1672,26 +1696,42 @@ proc ::CageMatch::Vertex2segname {vertexids} {
     variable ClusterMembers
     set results {}
     foreach id $vertexids {
-	lappend results $ClusterMembers($id)
+        lassign [array get ClusterMembers $id] name val
+	if {$name} {
+	    lappend results $val
+	} else {
+	    error "Value $id is not a vertex ID"
+	}
+#	lappend results $ClusterMembers($id)
     }
     return $results
 }
 
-
+proc __M2VUsage__ {} {
+    vmdcon -info "Return list of vertex IDs associated with given segnames/fragments."
+    vmdcon -info "Usage: Member2Vertex <fragment/segname list> [-current]"
+    vmdcon -info "  -current –Only print vertex IDs corresponding to the current polyhedron"
+    error ""
+}
 proc Member2Vertex {args} {
     if {![info exists ::CageMatch::TRACETYPE]} {
 	error "Running DrawPolyhedron before this is required"
     }
-    if {[llength $args]!=1} {
-	vmdcon -info "Return  vertex IDs in  the current representation to which segnames/fragments belongs"
-	vmdcon -info "Usage: Member2Vertex <fragment/segname list>"
-	error ""
+    set num [llength $args]
+    if {$num==0 || $num>2} {__M2VUsage__}
+    
+    if {$num==1} {
+	return [eval ::CageMatch::Segname2vertex "$args" allvertex]
+    } elseif {[lindex $args 1] != "-current"} {
+	__V2MUsage__
+    } else {
+	set args [lindex $args 0]
+	return [eval ::CageMatch::Segname2vertex "$args" $::CageMatch::TRACETYPE]
     }
-    return [eval ::CageMatch::Segname2vertex "$args" $::CageMatch::TRACETYPE]
 }
 
 # Returns the vertex IDs of all the vertices to which the segname belongs
-proc ::CageMatch::Segname2vertex {segname {Ttype "capsomers"}} {
+proc ::CageMatch::Segname2vertex {segname {Ttype "geodesic"}} {
     variable ClusterMembers
     set indexList [SetupTypes $Ttype 0]
 
@@ -1709,7 +1749,7 @@ proc ::CageMatch::Segname2vertex {segname {Ttype "capsomers"}} {
 }
 
 # returns a list of all possible triangles in a given polyhedra
-proc ::CageMatch::LocateTriangles {{Ttype "capsomers"}} {
+proc ::CageMatch::LocateTriangles {{Ttype "geodesic"}} {
     foreach {indexList neighbourList} [SetupTypes $Ttype 1] break
     array set neighbours $neighbourList
        
@@ -1747,7 +1787,7 @@ proc VertexDistance {args} {
 	vmdcon -info "Return the distance between two vertex IDs"
 	vmdcon -info "Usage: VertexDistance <VertexID1> <VertexID2>"
 	vmdcon -info "Use \"C\" as vertex ID for center"
-	error 
+	error ""
     }
     set clusters [array names ::CageMatch::ClusterCenters]
     foreach i $args {
@@ -1778,10 +1818,11 @@ proc ::CageMatch::MeasureDistance {i j} {
 
 proc VertexAngle {args} {
     if {[llength $args] != 3} {
-	vmdcon -info "Return the angle formed between three vertex IDs"
+	vmdcon -info "- VertexAngle: For three given vertex IDs i, j, and k, return the angle"
+	vmdcon -info "between the vector j-i and the vector j-k."
 	vmdcon -info "Usage: VertexDistance <VertexID1> <VertexID2> <VertexID3>"
 	vmdcon -info "Use \"C\" as vertex ID for center"
-	error 
+	error ""
     }
     set clusters [array names ::CageMatch::ClusterCenters]
     foreach i $args {
@@ -1840,14 +1881,14 @@ proc ::CageMatch::PyramidVolume {triangle} {
     return [expr ($Area*$height)/3.0]
 }
 
-proc RepVolume {} {
+proc Volume {} {
     if {![info exists ::CageMatch::TRACETYPE]} {
 	error "Running DrawPolyhedron before this is required"
     }
     return [eval ::CageMatch::CapsidVolume $::CageMatch::TRACETYPE]
 }
 proc ::CageMatch::CapsidVolume {Ttype} {
-    set allowedTypes {capsomers pentamers geodesic kites icosahedron kis goldberg}
+    set allowedTypes {geodesic pentamers triangulated kites icosahedron kleetope goldberg}
     if {[lsearch $allowedTypes $Ttype]==-1} {
 	error "Volume Calculation is only for the following: $allowedTypes"	
     }
@@ -1897,6 +1938,83 @@ proc ::CageMatch::Sphericity {Ttype} {
     return $sphericity
 }
 
+proc __FacetingUsage__ {} {
+    vmdcon -info "Return the average protrusion angle for icosahedral symmetry axes ( the"
+    vmdcon -info "angle between kite-plane normal and the respective local symmetry axis,"
+    vmdcon -info "averaged over all 60 kites)."
+    vmdcon -info "Usage: Faceting <symmetry_axis>  \[kite_normal\]"
+    vmdcon -info ""
+    vmdcon -info "Arguments:"
+    vmdcon -info "<symmetry_axis>  -- Acceptable values are \"all\" or a list with any combination of"
+    vmdcon -info "                    5, 3, and 2.   5 for the five-fold, 3 for the three-fold, and 2"
+    vmdcon -info "                    for the two-fold symmetry axes. “all” is equivalent to \{5 3 2\}."
+    vmdcon -info "\[kite_normal\] -- Optional, determines which kite normal to  use (left, right, or"
+    vmdcon -info "                   average). Default is average"
+    vmdcon -info ""
+    vmdcon -info "Output:"
+    vmdcon -info "Returns average angles and standard deviation for each symmetry axes in the order"
+    vmdcon -info "they were provided. Two-fold symmetry angle with respect to the average kite-plane"
+    vmdcon -info "normal return two angles, one for each two-fold axes. Two-fold symmetry angle with"
+    vmdcon -info "respect to the left/right kite-plane only returns one angle, to the respective"
+    vmdcon -info "left/right two-fold symmetry axis."
+    vmdcon -info ""
+    error ""
+}
+
+proc Faceting {args} {
+    set l [llength $args]
+    if { $l<1 || $l>2} {__FacetingUsage__}
+    set angles [lindex $args 0]
+    if {$l==2} {
+	set normals [lindex $args 1]
+    } else {
+	set normals def_val
+    }
+    set difference [::struct::set difference $angles {5 3 2}] 
+    if {[llength $difference]  >0 && $angles != "all" } {
+	__FacetingUsage__
+	
+    } elseif {$angles == "all"} {	  
+	set angles {5 3 2}	
+    }
+    switch -regexp $normals {
+	(left|right) {
+	    set normals [list $normals]
+	}
+	(average|def_val) {
+	    set normals {ave}
+	}
+	default {
+	    __FacetingUsage__
+	}
+    }
+
+    set maping(5,left) 0
+    set maping(5,right) 2
+    set maping(5,ave) 4
+
+    set maping(3,left) 6
+    set maping(3,right) 8
+    set maping(3,ave) 10
+
+    set maping(2,left) 12
+    set maping(2,right) 14
+    set maping(2,ave) {16 18}
+    
+    set faceting [::CageMatch::Faceting]
+
+    set results {}
+    foreach ang $angles {
+	foreach norm $normals {
+	    set name "$ang,$norm"
+	    foreach i $maping($name) {
+		set results [concat $results [lrange $faceting $i [expr $i +1]]]
+	    }
+	}
+    }
+    return $results
+}
+
 proc ::CageMatch::Faceting {{radians 0}} {
     variable KITEAXISTWOFOLD
     variable PentamerIDs
@@ -1919,8 +2037,12 @@ proc ::CageMatch::Faceting {{radians 0}} {
 	    }
 	}
     }
-
-    set angletypes { 5,l 5,r 5,a 3,l 3,r 3,a}
+    # angle type legend:
+    # <angle type> = <symmetry axis>,<plane normal>
+    # symmetry axis -- 5:fivefold, 3:threefold, 2l: left twofold, 2r: right twofold"
+    # plane normal -- l: left, r:right, a: average
+    
+    set angletypes { 5,l 5,r 5,a 3,l 3,r 3,a 2l,l 2r,r 2l,a 2r,a}
     foreach atype $angletypes {
 	set sum($atype)  0
 	set sum2($atype) 0
@@ -1968,7 +2090,8 @@ proc ::CageMatch::Faceting {{radians 0}} {
 	    set ltwo $two1
 	    set rtwo $two2
 	}
-
+	set vectors(2r) [vecnorm [vecsub $rtwo $CapsidCenter]]
+	set vectors(2l) [vecnorm [vecsub $ltwo $CapsidCenter]]
 	#sum of plane vectors
 	set plane_n(a) [vecnorm [vecadd $plane_n(l) $plane_n(r)]]
 	
@@ -2024,7 +2147,7 @@ proc ::CageMatch::SetupTypes {Ttype {retNeighbours 1}} {
 	(pentamers|icosahedron) {set indexList $PentamerIDs
 	    set neighbours [array get PentNeighbours]
 	}	
-	capsomers {set indexList [concat $PentamerIDs $HexamerIDs]
+	geodesic {set indexList [concat $PentamerIDs $HexamerIDs]
 	    set neighbours [array get ClusterNeighbours]
 	}
 	hexamers {set indexList $HexamerIDs
@@ -2036,10 +2159,10 @@ proc ::CageMatch::SetupTypes {Ttype {retNeighbours 1}} {
 	kites {set indexList [concat $PentamerIDs $TwofoldIDs $TrifoldIDs]
 	    set neighbours [array get KiteNeighbours]
 	}
-	(triangles|geodesic) {set indexList [concat $PentamerIDs $TwofoldIDs]
+	(triangles|triangulated) {set indexList [concat $PentamerIDs $TwofoldIDs]
 	    set neighbours [array get SymmetryNeighbours]
 	}
-	kis {set indexList [concat $PentamerIDs $HexamerIDs $GoldbergIDs]
+	kleetope {set indexList [concat $PentamerIDs $HexamerIDs $GoldbergIDs]
 	    set neighbours  [array get HybridNeighbours]
 	}
 	goldberg {set indexList $GoldbergIDs
@@ -2048,8 +2171,13 @@ proc ::CageMatch::SetupTypes {Ttype {retNeighbours 1}} {
 	gfaces {set indexList [concat $GoldbergIDs $GoldbergPentIDs $GoldbergHexIDs]
 	    set neighbours  [array get GoldbergTriNeighbours]
 	}
+	allvertex {
+	    set indexList [concat $PentamerIDs $HexamerIDs $TwofoldIDs $TrifoldIDs $GoldbergIDs]
+	    set indexList [lsort -unique $indexList]
+	    set neighbours {}
+	}
 	default {
-	    error "Unacceptable argument. Acceptable arguments are capsomers, pentamers,icosahedron, hexamers, twofold, kites, geodesic, goldberg or kis"
+	    error "Unacceptable argument. Acceptable arguments are geodesic, pentamers,icosahedron, hexamers, twofold, kites, triangulated, goldberg or kleetope"
 	}
 	
     }
@@ -2147,7 +2275,7 @@ proc ::CageMatch::DrawTriangle {triangle {molid top}} {
     graphics $molid triangle $ClusterCenters($i) $ClusterCenters($j) $ClusterCenters($k)
 }
 
-proc ::CageMatch::DrawVertices {{Ttype "capsomers"} {molid top} {rad "None"} {res "None"}} {
+proc ::CageMatch::DrawVertices {{Ttype "geodesic"} {molid top} {rad "None"} {res "None"}} {
     variable VERTEXRAD
     variable VERTEXRES
 
@@ -2161,7 +2289,7 @@ proc ::CageMatch::DrawVertices {{Ttype "capsomers"} {molid top} {rad "None"} {re
     return $drawList
 }
 
-proc ::CageMatch::DrawEdges {{Ttype "capsomers"} {molid top}} {
+proc ::CageMatch::DrawEdges {{Ttype "geodesic"} {molid top}} {
     variable ClusterCenters
     variable EDGECOLOR
     variable EDGEMATERIAL
@@ -2175,16 +2303,27 @@ proc ::CageMatch::DrawEdges {{Ttype "capsomers"} {molid top}} {
     graphics $molid color $EDGECOLOR
     foreach i $indexList {
 	set nList $neighbours($i)
-	set coords1 $ClusterCenters($i)
+	#set coords1 $ClusterCenters($i)
 	foreach j $nList {
 	    set A [lsort -integer [list $i $j]]
 	    if {[lsearch $drawn $A]!=-1} continue
-	    set coords2 $ClusterCenters($j)
-	    lappend drawList [graphics $molid cylinder $coords1 $coords2 radius $EDGERAD resolution $EDGERES]
+	    #set coords2 $ClusterCenters($j)
+	    lappend drawList [DrawSingleEdge $i $j $molid]
 	    lappend drawn $A
 	}
     }
     return [list $drawn $drawList]
+}
+
+proc ::CageMatch::DrawSingleEdge {i j {molid top}} {
+    variable ClusterCenters
+    variable EDGECOLOR
+    variable EDGEMATERIAL
+    variable EDGERAD
+    variable EDGERES
+    set coords1 $ClusterCenters($i)
+    set coords2 $ClusterCenters($j)
+    return [graphics $molid cylinder $coords1 $coords2 radius $EDGERAD resolution $EDGERES]
 }
 
 proc ::CageMatch::DrawPyramids {Ttype {molid top} {DrawType "VE"}} {
@@ -2208,13 +2347,6 @@ proc ::CageMatch::DrawPyramids {Ttype {molid top} {DrawType "VE"}} {
     return $polygon     
 }
 
-# Draw given polygon based on the following keywords:
-#   - pentamers: Icosahedron, vertices correspond to center pentavalent capsomers
-#   - capsomers: Triangular-faced polyhedra, vertices correspond to capsomer centers
-#   - triangles: Triangular-faced polyhedra, vertices correspond to symmetry axes
-#   - hexamers:  Pentamer outline, vertices correspond to hexavalent capsomers
-#   - twofold:   Pentamer outline, vertices correspond to twofold symmetry axes
-#   - kites:     Kites polyhedra, vertices correspond to symmetry axes
 proc ::CageMatch::DrawPolygon {Ttype {molid top} {DrawType "VE"}} {
     variable LastDrawnPolygon
     variable CLEANPREVIOUS
@@ -2317,7 +2449,7 @@ proc ::CageMatch::CleanLast {{molid top} {ClearList "None"}} {
 }
 
 # Draws the neighbours of a given vertex for a given representation
-proc ::CageMatch::DrawNeighbours {index  {Ttype "capsomers"} {molid top}} {
+proc ::CageMatch::DrawNeighbours {index  {Ttype "geodesic"} {molid top}} {
     variable LastDrawnPolygon
     variable CLEANPREVIOUS 
     if {$CLEANPREVIOUS} {CleanLast $molid}
@@ -2427,18 +2559,12 @@ proc ::CageMatch::ExtractPoly {} {
     }
     set count 1
     set Vnames {P H X T S}
-    # puts "Pids $Pids"
-    # puts "Hids $Hids"
-    # puts "Xids $Xids"
-    # puts "Tids $Tids"
-    # puts "Sids $Sids"
     
     foreach Ilist [list $Pids $Hids $Xids $Tids $Sids] vtype $Vnames  {
 	
 	foreach id $Ilist {
 	    set atomid2vertexid($count) $id
 	    set vertexid2atomid($id) $count
-# 	    puts "$count $atomid2vertexid($count)"
 	    lappend AtomIDList($vtype) $count
 	    incr count
 	}
@@ -2446,7 +2572,6 @@ proc ::CageMatch::ExtractPoly {} {
     }
 
     set newmol [mol new atoms $Natoms]
-    # puts [array get AtomIDList]
     set Vnames [::struct::set intersect $Vnames [array names AtomIDList]]
     foreach vtype $Vnames {	
 	puts "$vtype [llength $AtomIDList($vtype)]"
@@ -2462,15 +2587,12 @@ proc ::CageMatch::ExtractPoly {} {
 	}
 	$AtomSelections($vtype) set segname $segnames
     }
-#     puts "got here"
-    
     
     set nf [molinfo $TRACEMOLID get numframes]
     mol top $TRACEMOLID
     set sel1 [atomselect $newmol "index 0"]
     $sel1 set {name chain resname segname} {{C C C C}}    
 
-#    puts [array get atomid2vertexid]
     for {set i 0} {$i < $nf} {incr i} {
 	animate dup $newmol
 	animate goto $i
@@ -2497,10 +2619,11 @@ proc ::CageMatch::ExtractPoly {} {
     return [ array get atomid2vertexid ]
 }
 
-proc SavePoly {args} {
+proc SavePolyhedron {args} {
     if {[llength $args] !=1} {
-	puts "Save current polyhedral representation info"
-	puts "Usage: SavePoly <output>"
+        vmdcon -info "Write current vertex definitions and polyhedron connectivity to file."
+	vmdcon -info "Usage: SavePolyhedron <output>"
+	vmdcon -info ""
 	error ""
     }
     return [eval ::CageMatch::SaveVertexinfo $args]
@@ -2515,6 +2638,7 @@ proc ::CageMatch::SaveVertexinfo {output} {
     variable GoldbergIDs
     variable GoldbergPentIDs
     variable GoldbergHexIDs
+    variable Capsomers2Goldberg 
     
     # Arrays with vertex info:
     variable ClusterMembers
@@ -2621,20 +2745,15 @@ proc ::CageMatch::SaveVertexinfo {output} {
 	    KiteNeighbours
 	    HybridNeighbours
 	    SymmetryNeighbours
+	    Capsomers2Goldberg
 	}
 	foreach i $PentamerIDs {
 	    foreach ntype $neighbourTypes {
 		try { puts $fp "set ::CageMatch::${ntype}($i) [list [set ${ntype}($i)]]"} finally {continue}
 	    }
-	    # puts $fp "set ::CageMatch::ClusterNeighbours($i) $ClusterNeighbours($i)"
-	    # puts $fp "set ::CageMatch::PentNeighbours($i) $PentNeighbours($i)"
-	    # try {puts $fp "set ::CageMatch::KiteNeighbours($i) $KiteNeighbours($i)"}
-	    # try {puts $fp "set ::CageMatch::GoldbergNeighbours($i) $GoldbergNeighbours($i)"}
-	    # try {puts $fp "set ::CageMatch::SymmetryNeigbours($i) $SymmetryNeigbours($i)"}
-	    
 	}
 
-	set neighbourTypes {ClusterNeighbours HexNeighbours HybridNeighbours}
+	set neighbourTypes {ClusterNeighbours HexNeighbours HybridNeighbours Capsomers2Goldberg}
 	foreach i $HexamerIDs {
 	    foreach ntype $neighbourTypes {
 		try { puts $fp "set ::CageMatch::${ntype}($i) [list [set ${ntype}($i)]]"} finally {continue}
@@ -2717,25 +2836,433 @@ proc ::CageMatch::SaveVertexinfo {output} {
 	if {$KEEPSELECTIONS} {
 	    puts $fp  "vmdcon -info \"Making atomselections ...\""
 	    puts $fp "::CageMatch::SelectCluster $TRACEMOLID now {$TRACESELECTION}"
+	    
 	} 
 	puts $fp "vmdcon -info \"Drawing polyhedron\""
+	puts $fp "DrawPolyhedron kleetope"
+	if {$TRACEICOSA} {
+	    puts $fp "DrawPolyhedron kites"
+	}
 	puts $fp "DrawPolyhedron $TRACETYPE"
     } finally {
 	close $fp
     }
 }
 
-proc LoadPoly {args} {
+proc LoadPolyhedron {args} {
     if {[llength $args] !=1} {
-	puts "Load Polyhedral representation "
-	puts "Usage: LoadPoly <polyhedron file>"
+        vmdcon -info "Read vertex definitions and polyhedron connectivity from file."
+	vmdcon -info "Usage: LoadPolyhedron <polyhedron file>"
+	vmdcon -info ""
 	error ""
     }
     set output [lindex $args 0]
     source $output
 }
 
-if {0} {
+# get the shortest path tree (SPT) for unfolding the polyhedron
+proc ::CageMatch::GetSPT {{rootface "None"}} {
+    variable PentamerIDs
+    variable SPTDistances
+    variable SPTParentEdge
+    variable SPTChildEdge
+    variable SPTDistancesRev
+    variable SPTMaxDist
+    variable SPTRoot
+    
+    array unset SPTDistances *
+    array unset SPTParentEdge *
+    array unset SPTChildEdge *
+    array unset SPTDistancesRev *
+    
+    lassign  [SetupTypes geodesic 1] indexList neighbourList
+    
+    array set neighbourArray $neighbourList
+    if {$rootface=="None"} {
+	set SPTRoot [lindex $indexList 0]
+    } else {
+	set SPTRoot $rootface
+    }
+    set queue [list $SPTRoot]
+    
+    set SPTDistances($SPTRoot) 0
+    
+    while {[llength $queue]} {
+	set current [lindex $queue 0]
+	set queue [lrange $queue 1 end]
+	if {[lsearch [array names SPTChildEdge] $current] == -1} {set SPTChildEdge($current) {}}
+	foreach neighbour $neighbourArray($current) {
+	    if {[lsearch [array names SPTDistances] $neighbour] == -1} {
+		set dist [expr $SPTDistances($current) + 1]
+		lappend SPTDistancesRev($dist) $neighbour
+		set SPTDistances($neighbour) $dist
+		set SPTParentEdge($neighbour) $current
+		lappend queue $neighbour
+	    }
+	}
+    }
+    
+    set SPTMaxDist $dist
+
+    while {$dist >0} {
+	foreach faceid $SPTDistancesRev($dist) {
+	    set parent $SPTParentEdge($faceid)
+	    set SPTChildEdge($parent) [lsort -unique [concat $SPTChildEdge($parent) $faceid $SPTChildEdge($faceid)]]
+    	}
+	incr dist -1
+    }
+    set SPTDistancesRev(0) $SPTRoot
+}
+
+proc ::CageMatch::Unfold1Face_top_down {faceid} {
+    variable SPTDistances
+    variable SPTParentEdge
+    variable SPTChildEdge
+    variable SPTRoot
+    variable GoldbergPentIDs
+    variable GoldbergHexIDs
+    variable GoldbergTriNeighbours
+    variable Capsomers2Goldberg
+    variable HybridNeighbours
+    variable ClusterNeighbours
+    variable VProjections
+    variable ClusterCenters
+    variable ClusterMembers
+    variable ClusterSelections
+    variable NetCenters
+    variable CLUSTERBY
+    variable TRACEMOLID
+
+    if {$faceid == $SPTRoot} {AlignRoot2xy
+	return
+    }
+    
+    set parent $SPTParentEdge($faceid)
+    set parent_vertices $HybridNeighbours($parent)
+    set child_vertices $HybridNeighbours($faceid)
+    lassign [::struct::set intersect $parent_vertices $child_vertices] edv1 edv2
+    set posedv2 $VProjections($parent,$edv2)
+    set posedv1 $VProjections($parent,$edv1)
+    
+    set shared_edge [vecsub  $posedv2 $posedv1]
+    if {[lindex [veccross $posedv1 $posedv2] 2] <0} {
+	set shared_edge [vecscale -1 $shared_edge]
+    }
+    set shared_center [vecscale 0.5 [vecadd $posedv2 $posedv1]]
+#    set c1 $Capsomers2Goldberg($parent)
+#    set c2 $Capsomers2Goldberg($faceid)
+
+    set sel [atomselect $TRACEMOLID "$CLUSTERBY $ClusterMembers($faceid)"]
+    lassign [measure inertia $sel] COM Ivec
+    lassign [CompareIvec $Ivec {0.0 0.0 1.0}] normal1 angle
+    
+
+    
+    set t_matrix [trans center $shared_center  axis $shared_edge $angle rad]
+
+    
+    set segments $ClusterMembers($faceid)
+    set all_children $SPTChildEdge($faceid)
+	     
+        
+    foreach id $all_children {
+    	set segments [concat $segments $ClusterMembers($id)]
+    	foreach {name value} [array get VProjections "$id,*"] {
+    	    set VProjections($name) [coordtrans $t_matrix $value] 
+    	}
+    }
+
+    foreach {name value} [array get VProjections "$faceid,*"] {
+    	set VProjections($name) [coordtrans $t_matrix $value]
+    	set VProjections($name) [concat [lrange $VProjections($name) 0 1] 0.0]
+    }
+
+    $sel delete
+    set sel [atomselect top "$CLUSTERBY $segments"]
+    
+    $sel move $t_matrix
+    $sel delete
+    return $t_matrix
+}
+
+proc ::CageMatch::AlignRoot2xy {} {
+    variable SPTRoot
+    variable SPTDistances
+    variable SPTParentEdge
+    variable SPTChildEdge
+    variable ClusterCenters
+    variable ClusterMembers
+    variable HybridNeighbours
+    variable Capsomers2Goldberg
+    variable CLUSTERBY
+    variable TRACEMOLID
+    variable TRACESELECTION
+    variable VProjections
+
+    set sel1 [atomselect $TRACEMOLID "$CLUSTERBY $ClusterMembers($SPTRoot)"]
+    lassign [measure inertia $sel1] COM Ivec
+    $sel1 delete
+    
+    set selection [lmap x $SPTChildEdge($SPTRoot) {list $ClusterMembers($x)}]
+    set selection [join [join $selection]]
+    set selection [concat $ClusterMembers($SPTRoot) $selection]
+    set sel [atomselect $TRACEMOLID "$CLUSTERBY $selection"]
+   
+    
+
+    lassign [CompareIvec $Ivec $COM] vec1 angle
+    set vec2 {0.0 0.0 1.0}
+    set rotvec [veccross $vec1 $vec2]
+    set sine   [veclength $rotvec]
+    set cosine [vecdot $vec1 $vec2]
+    set angle [expr atan2($sine,$cosine)]
+
+    set t_matrix [trans origin $COM  axis $rotvec $angle rad]
+    $sel move $t_matrix
+    $sel delete
+    UpdateVertices goldberg  now $TRACEMOLID $TRACESELECTION
+
+    set indexList [SetupTypes geodesic 0]
+    ResetVProjections
+
+}
+
+proc ::CageMatch::ResetVProjections {} {
+    variable VProjections
+    variable SPTRoot
+    variable SPTParentEdge
+    variable HybridNeighbours
+    variable ClusterCenters
+
+    foreach {child parent} [array get SPTParentEdge] {
+	set nlist [::struct::set difference $HybridNeighbours($child) $HybridNeighbours($parent)]
+	foreach i $nlist { set VProjections($child,$i) $ClusterCenters($i)}
+    }
+    foreach i $HybridNeighbours($SPTRoot) {
+	set VProjections($SPTRoot,$i) [concat [lrange $ClusterCenters($i) 0 1] 0.0]
+    }
+}
+
+proc ::CageMatch::MakePolyNet {} {
+    variable SPTDistancesRev
+    variable TRACEMOLID
+    variable SPTMaxDist
+    set startframe [molinfo $TRACEMOLID get frame]
+    for {set i 0} {$i<=$SPTMaxDist} {incr i} {
+	foreach faceid $SPTDistancesRev($i) {
+	    animate dup $TRACEMOLID
+	    Unfold1Face_top_down $faceid
+	    display update
+	}
+    }
+    set endframe [molinfo $TRACEMOLID get frame]
+    return [list $startframe $endframe]
+}
+
+
+proc __PolyNetUsage__ {} {
+    vmdcon -info "Generate 2D Goldberg polyhedron net projection."
+    vmdcon -info "Usage: PolyhedronNet <source_face> \[options\]"
+    vmdcon -info ""
+    vmdcon -info "Arguments:"
+    vmdcon -info "  <source_face>  -- Geodesic polyhedron vertex ID. Designates the capsomer from"
+    vmdcon -info "                    which to start the Goldberg polyhedron net. Value of 0 makes"
+    vmdcon -info "                    PolyhedronNet select the first PentamerID as a starting point."
+    vmdcon -info ""
+    vmdcon -info "Options (options default to polyhedron settings):"
+    vmdcon -info "-color <ColorID> -- Edge color."
+    vmdcon -info "-rad <radius>    -- Edge radius."
+    vmdcon -info "-progress        -- Keep frames generated in every step of the polyhedron"
+    vmdcon -info "                    net construction. By default, only the result is kept."   
+    vmdcon -info ""
+    error ""
+}
+proc PolyhedronNet {args} {
+
+    set oldcolor $::CageMatch::EDGECOLOR
+    set oldrad $::CageMatch::EDGERAD
+    set ids [concat $::CageMatch::PentamerIDs $::CageMatch::HexamerIDs]
+
+    if {[llength $args]< 1 } {__PolyNetUsage__}
+    set faceid [lindex $args 0]
+    set args [lrange $args 1 end]
+    
+    set flag [lsearch $args "-help"]
+    if {$flag != -1 } { __PolyNetUsage__}
+
+    set flag [lsearch $args "-color"]
+    if {$flag !=-1} {
+	set ::CageMatch::EDGECOLOR [lindex $args [expr $flag + 1]]
+	set args [lreplace $args $flag [expr $flag + 1]]
+    }
+    
+    set flag [lsearch $args "-rad"]
+    if {$flag !=-1} {
+	set ::CageMatch::EDGERAD [lindex $args [expr $flag + 1] ]
+	set args [lreplace $args $flag [expr $flag + 1]]
+    }
+
+    set flag [lsearch $args "-progress"]
+    if {$flag !=-1} {
+	set keep 1
+	set args [lreplace $args $flag  $flag]
+    } else {
+	set keep 0
+    }
+    
+    try {
+	if {[lsearch $ids $faceid] == -1 && $faceid !=0 } {
+	    __PolyNetUsage__
+	}	
+	if {[llength $args]} {__PolyNetUsage__}
+	uplevel {StopPolyhedron 1}
+	if {$faceid} {
+	    ::CageMatch::GetSPT $faceid
+	} else {
+	    ::CageMatch::GetSPT
+	}
+	lassign [::CageMatch::MakePolyNet] start end
+	::CageMatch::DrawNet
+	if {!$keep} {
+	    animate delete beg [expr $start +1] end [expr $end -1] $::CageMatch::TRACEMOLID   
+	}
+    } finally {
+	set ::CageMatch::EDGECOLOR $oldcolor
+	set ::CageMatch::EDGERAD $oldrad
+    }
+    return
+}
+
+proc ::CageMatch::DrawNet {} {
+    variable SPTDistancesRev
+    variable TRACEMOLID
+    variable SPTMaxDist
+    variable HybridNeighbours 
+    variable LastDrawnPolygon
+    variable CLEANPREVIOUS
+    variable GOLDBERGCENTER
+    variable TRACEMOLID
+    if {$CLEANPREVIOUS} {CleanLast $TRACEMOLID}
+
+    set drawnList {}
+    for { set i $SPTMaxDist} {$i > 0} {incr i -1} {
+	foreach faceid $SPTDistancesRev($i) {
+	    set drawnList [concat $drawnList [DrawNetFace $faceid]] 
+	}
+    }
+    set LastDrawnPolygon $drawnList
+}
+
+proc ::CageMatch::DrawNetFace {faceid} {
+    variable SPTParentEdge
+    variable HybridNeighbours
+    variable GoldbergNeighbours
+    variable EDGECOLOR
+    variable EDGERAD
+    variable EDGEMATERIAL
+    variable TRACEMOLID
+    variable EDGERES
+    variable VProjections
+    
+    set parent_vertices {}
+
+    foreach {child parent} [array get SPTParentEdge $faceid] {        
+	
+	set parent_vertices $HybridNeighbours($parent)
+    }
+    
+    set child_vertices $HybridNeighbours($faceid)
+    set difference [::struct::set difference $child_vertices $parent_vertices]
+    set intersect [::struct::set intersect $child_vertices $parent_vertices]
+
+    foreach id $difference {set Coords($id) $VProjections($faceid,$id)}
+    foreach id $intersect {set Coords($id) $VProjections($parent,$id)}
+    set drawList [graphics $TRACEMOLID material $EDGEMATERIAL]
+    lappend drawList [graphics $TRACEMOLID color $EDGECOLOR]
+
+    set drawn {}
+    
+    foreach i $child_vertices {
+	set coords1 $Coords($i)
+	lappend drawList [graphics $TRACEMOLID sphere $coords1 radius $EDGERAD resolution $EDGERES]
+    	set nList [::struct::set intersect $GoldbergNeighbours($i) $child_vertices]
+	foreach j $nList {
+	    set A [lsort -integer [list $i $j]]
+	    if {[lsearch $drawn $A]!=-1} continue
+	    set coords2 $Coords($j)
+	    lappend drawList [graphics $TRACEMOLID cylinder $coords1 $coords2 radius $EDGERAD resolution $EDGERES]
+	    lappend drawn $A
+	}
+    }
+    return $drawList
+}
+
+proc ColorByPath {} {
+
+    set root $::CageMatch::SPTRoot
+    set cid 1
+    ViewClusterMembers $root -color "ColorID 0"
+    set capsomerIDs [concat $::CageMatch::PentamerIDs $::CageMatch::HexamerIDs]
+    foreach {name value} [array get ::CageMatch::SPTDistances] {
+	lappend dists [list $name $value]
+    }
+    
+    set dists {}
+    foreach {name value} [array get ::CageMatch::SPTDistances] {
+	lappend dists [list $name $value]
+    }
+
+    set sorted_dists [lsort -index 1 -integer -decreasing $dists ]
+    
+    set checked_paths {} 
+    foreach val  $sorted_dists {
+	lassign $val faceid distances
+	if {[lsearch $checked_paths $faceid] != -1} {continue}
+	set path [::CageMatch::GetUpPath $faceid]
+	set unique_elements [::struct::set difference $path $checked_paths]
+	set checked_paths [::struct::set union $checked_paths $path]
+	#	set Actual_paths($val) $path
+	if {$cid>33} {set cid 1}
+	ViewClusterMembers $unique_elements -color "ColorID $cid"
+	incr cid
+    }
+}
+
+proc ColorByDistance {} {
+
+    set root $::CageMatch::SPTRoot
+    set cid 1
+    ViewClusterMembers $root -color "ColorID 0"
+    array set ColorDist {}
+    foreach {name value} [array get ::CageMatch::SPTDistances] {
+	lappend ColorDist($value)  $name
+    }
+
+    foreach d [lsort -integer [array names ColorDist]] {
+	if {$cid>33} {set cid 1}
+	ViewClusterMembers $ColorDist($d) -color "ColorID $cid"
+	incr cid
+    }
+    
+}
+
+proc ::CageMatch::GetUpPath {faceid} {
+    variable SPTParentEdge
+    variable SPTDistances
+    variable SPTRoot
+
+    if {$faceid==$SPTRoot} {return}
+    set parent $SPTParentEdge($faceid)
+    set pathList [list $faceid]
+    while {$parent!=$SPTRoot} {
+	lappend pathList $parent
+	set parent $SPTParentEdge($parent)
+    }
+    return $pathList
+}
+
+
+if {1} {
     proc Time_commands {script} {
 	set start [clock milliseconds]
 	uplevel $script
