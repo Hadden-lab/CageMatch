@@ -48,7 +48,7 @@ proc __VCMUsage__ {} {
     vmdcon -info "Generate graphical representation of all the segnames/fragments associated"
     vmdcon -info "with the given vertex IDs."
     vmdcon -info "Usage: ViewClusterMembers <VertexID list> \[options\]"
-    vmdcon -info  “”
+    vmdcon -info ""
     vmdcon -info "Options are:"
     vmdcon -info "-mol <molid>     -- Molid. Default: top."
     vmdcon -info "-rep <rep_style> -- Rendering method. Defaults to current default method."
@@ -128,7 +128,7 @@ proc ViewClusterMembers {args} {
 proc __VCPUsage__ {} {
     vmdcon -info "Visualize points (center of atomselections) to be used as starting sets for"
     vmdcon -info "vertex detection clustering. "
-    vmdcon -info "Usage: ViewClusterPoints <selection> \[options\]  "
+    vmdcon -info "Usage: ViewClusterPoints <atomselection> \[options\]  "
     vmdcon -info ""
     vmdcon -info "Options are: "
     vmdcon -info "-mol <molid>         -- Molid for atomselection. Default: top."
@@ -257,14 +257,13 @@ proc StopPolyhedron {args} {
     set TRACEMOLID $::CageMatch::TRACEMOLID
     if {$TRACEMOLID=="top"} {set TRACEMOLID [molinfo top]}
     set TRACEENABLED $::CageMatch::TRACEENABLED
-#     puts "TRACEENABLED $TRACEENABLED"
-#     puts "::CageMatch::TRACEENABLED $::CageMatch::TRACEENABLED"
+
     if {$args} {
 	::CageMatch::CleanLast $TRACEMOLID
+	uplevel {trace remove variable vmd_pick_graphics write ::CageMatch::PickPointTracer}
     }
     
     if {$TRACEENABLED} {
-#	puts "Removing trace"
 	uplevel {trace remove variable vmd_frame($::CageMatch::TRACEMOLID) write ::CageMatch::TracerFunc}
 	set ::CageMatch::TRACEENABLED 0
     }
@@ -272,12 +271,25 @@ proc StopPolyhedron {args} {
     return
 }
 
-proc __DrawPolyhedronUsage__ {} {
-    vmdcon -info "Perform vertex detection clustering on user-defined atomselection to map"
-    vmdcon -info "segnames/fragments to local symmetry axes and draw specified polyhedron."
-    vmdcon -info "Usage: DrawPolyhedron <polyhedron> \[options\]"
-    vmdcon -info ""
-    vmdcon -info "Available polyhedra (choose one):"
+proc __DrawPolyhedronUsage__ {{fromfile 0}} {
+    if {$fromfile} {
+	vmdcon -info "Load Vertex information from file."
+	vmdcon -info "Usage: LoadPolyhedron <polyhedron file> \[options\]"
+	vmdcon -info ""
+	vmdcon -info "Options are:"
+	vmdcon -info "-mol <molid>     -- Cage molid. Default: top."
+	vmdcon -info "-poly <polyhedron> -- Polyhedron to draw. Default: geodesic."
+	vmdcon -info "-draw <VEF>      -- Combination of strings V E F determines whether to draw"
+	vmdcon -info "                    (V)ertices, (E)dges, and/or (F)aces. Default: VE"
+	vmdcon -info "-gcenters <on/off> -- Draw face centers for the Goldberg polyhedron. Default: off."
+	vmdcon -info ""    
+    } else {
+	vmdcon -info "Perform vertex detection clustering on user-defined atomselection to map"
+	vmdcon -info "segnames/fragments to local symmetry axes and draw specified polyhedron."
+	vmdcon -info "Usage: DrawPolyhedron <polyhedron> \[options\]"
+	vmdcon -info ""
+    }
+    vmdcon -info "Available polyhedra:"
     vmdcon -info "icosahedron  -- Regular icosahedron. Vertices represent five-fold"
     vmdcon -info "                icosahedral symmetry axes."
     vmdcon -info "triangulated -- Pentakis icosidodecahedron. Vertices represent five-fold"
@@ -292,26 +304,28 @@ proc __DrawPolyhedronUsage__ {} {
     vmdcon -info "                Vertices represent the centers and three-fold conjunctions of"
     vmdcon -info "                capsomers."
     vmdcon -info ""
-    vmdcon -info "Options (default values mentioned are for the first invocation,"
-    vmdcon -info "consecutive invocations default to previously set values):"
-    vmdcon -info ""
-    vmdcon -info "-mol <molid>     -- Molid on which to draw the polyhedron. Default: top"
-    vmdcon -info "-draw <VEF>      -- Combination of strings V E F determines whether to draw"
-    vmdcon -info "                    (V)ertices, (E)dges, and/or (F)aces. Default: VE"
-    vmdcon -info "-sel <selection> -- Atomselection used in vertex detection clustering. Default: name CA."
-    vmdcon -info "-recalc          -- Force vertex detection clustering."
-    vmdcon -info "-noicosa         -- No icosahedral symmetry present, disables use of"
-    vmdcon -info "                    icosahedron, kites, and triangulated polyhedra."
-    vmdcon -info "-icosa           -- Icosahedral symmetry present (default)"
-    vmdcon -info "-cagesel <selection> -- Atomselection defining the cage. Default: protein."
-    vmdcon -info "-clusterby <segname/fragment> -- Unique chain identifier used in vertex"
-    vmdcon -info "                                 detection clustering."
-    vmdcon -info "-clustersizes <list>   -- List of containing the number of elements per cluster allowed"
-    vmdcon -info "                          when performing vertex detection clustering. Default: {5 6}."
-    vmdcon -info "-skiprefine <bool>     -- Skip vertex definition refinement. Default: 0 (don't skip)."
-    vmdcon -info "-refinesel <selection> -- Atomselection used for refining vertex definitions. Default: name CA."
-    vmdcon -info "-gcenters <on/off> -- Draw face centers for the Goldberg polyhedron. Default: off."
-    vmdcon -info ""
+    if {!$fromfile} {
+	vmdcon -info "Options (default values mentioned are for the first invocation,"
+	vmdcon -info "consecutive invocations default to previously set values):"
+	vmdcon -info ""
+	vmdcon -info "-mol <molid>     -- Molid on which to draw the polyhedron. Default: top"
+	vmdcon -info "-draw <VEF>      -- Combination of strings V E F determines whether to draw"
+	vmdcon -info "                    (V)ertices, (E)dges, and/or (F)aces. Default: VE"
+	vmdcon -info "-clustersel <selection> -- Atomselection used in vertex detection clustering. Default: name CA."
+	vmdcon -info "-recalc          -- Force vertex detection clustering."
+	vmdcon -info "-noicosa         -- No icosahedral symmetry present, disables use of"
+	vmdcon -info "                    icosahedron, kites, and triangulated polyhedra."
+	vmdcon -info "-icosa           -- Icosahedral symmetry present (default)"
+	vmdcon -info "-cagesel <selection> -- Atomselection defining the cage. Default: protein."
+	vmdcon -info "-clusterby <segname/fragment> -- Unique chain identifier used in vertex"
+	vmdcon -info "                                 detection clustering."
+	vmdcon -info "-clustersizes <list>   -- List of containing the number of elements per cluster allowed"
+	vmdcon -info "                          when performing vertex detection clustering. Default: {5 6}."
+	vmdcon -info "-skiprefine <bool>     -- Skip vertex definition refinement. Default: 0 (don't skip)."
+	vmdcon -info "-refinesel <selection> -- Atomselection used for refining vertex definitions. Default: name CA."
+	vmdcon -info "-gcenters <on/off> -- Draw face centers for the Goldberg polyhedron. Default: off."
+	vmdcon -info ""
+    }
     error ""
 }
 
@@ -323,9 +337,17 @@ proc DrawPolyhedron {args} {
     set Ttype [lindex $args 0]
     set args [lreplace $args 0 0]
     set allowedTypes {geodesic pentamers triangulated triangles kites twofold hexamers icosahedron goldberg kleetope}
+
+    set flag [lsearch $args "-fromfile"]
+    if { $flag != -1} {
+	set fromfile 1 
+	set args [lreplace $args $flag $flag]
+    } else {
+	set fromfile 0
+    }
     if {[lsearch $allowedTypes $Ttype]==-1} {
 	vmdcon -err "Unrecognized option: $Ttype"
-	__DrawPolyhedronUsage__	
+	__DrawPolyhedronUsage__	$fromfile
     }
     set flag [lsearch $args "-draw"]
     if { $flag != -1} {
@@ -340,7 +362,7 @@ proc DrawPolyhedron {args} {
 	set gcenters [lindex $args [expr $flag +1]]
 	set args [lreplace $args $flag [expr $flag +1]]
 	if {$gcenters!= "on" && $gcenters !="off"} {
-	    __DrawPolyhedronUsage__	
+	    __DrawPolyhedronUsage__ $fromfile
 	} elseif {$gcenters == "on"} {
 	    set ::CageMatch::GOLDBERGCENTER 1
 	} else {
@@ -353,11 +375,13 @@ proc DrawPolyhedron {args} {
     if {$flag != -1} {
 	set molid [lindex $args [expr $flag + 1]]
 	set args [lreplace $args $flag [expr $flag + 1]]
+	set midflag 1
     } else {
 	set molid $::CageMatch::TRACEMOLID
+	set midflag 0
     }
 
-    set flag [lsearch $args "-sel"]
+    set flag [lsearch $args "-clustersel"]
     if {$flag != -1} {
 	set selection [lindex $args [expr $flag + 1]]
 	set args [lreplace $args $flag [expr $flag + 1]]
@@ -367,6 +391,7 @@ proc DrawPolyhedron {args} {
 
     set flag [lsearch $args "-clusterby"]
     if {$flag != -1} {
+	if {$fromfile} {__DrawPolyhedronUsage__	$fromfile}
 	set clusterby [lindex $args [expr $flag + 1]]
 	set args [lreplace $args $flag [expr $flag + 1]]
     } else {
@@ -374,7 +399,7 @@ proc DrawPolyhedron {args} {
     }
 
     if { $clusterby!="segname" && $clusterby!="fragment"} {
-	__DrawPolyhedronUsage__
+	__DrawPolyhedronUsage__ $fromfile
     }
 
     if {$clusterby != $::CageMatch::CLUSTERBY} {
@@ -385,6 +410,7 @@ proc DrawPolyhedron {args} {
 
     set flag [lsearch $args "-clustersizes"]
     if {$flag != -1} {
+	if {$fromfile} {__DrawPolyhedronUsage__	$fromfile}
 	set clustersizes [lindex $args [expr $flag + 1]]
 	set args [lreplace $args $flag [expr $flag + 1]]
     } else {
@@ -399,6 +425,7 @@ proc DrawPolyhedron {args} {
     
     set flag [lsearch $args "-cagesel"]
     if {$flag != -1} {
+	if {$fromfile} {__DrawPolyhedronUsage__	$fromfile}
 	set cagesel [lindex $args [expr $flag + 1]]
 	set args [lreplace $args $flag [expr $flag + 1]]
     } else {
@@ -412,19 +439,23 @@ proc DrawPolyhedron {args} {
     
     set flag [lsearch $args "-recalc"]
     if {$flag != -1} {
+	if {$fromfile} {__DrawPolyhedronUsage__	$fromfile}
 	set args [lreplace $args $flag $flag]
 	set  ::CageMatch::INITCLUSTER 0
+	if {!$midflag} {set molid top}
     }
     
     set flag1 [lsearch $args "-icosa"]
     set flag2 [lsearch $args "-noicosa"]
 
     if { $flag1 != -1 && $flag2 != -1} {
-	__DrawPolyhedronUsage__
+	__DrawPolyhedronUsage__ $fromfile
     } elseif {$flag2 != -1} {
+	if {$fromfile} {__DrawPolyhedronUsage__	$fromfile}
 	set args [lreplace $args $flag2 $flag2]
 	set icosa 0
     } elseif {$flag1 != -1} {
+	if {$fromfile} {__DrawPolyhedronUsage__	$fromfile}
 	set args [lreplace $args $flag1 $flag1]
 	set icosa 1
     } else {
@@ -433,6 +464,7 @@ proc DrawPolyhedron {args} {
 
     set flag [lsearch $args "-skiprefine"]
     if {$flag != -1} {
+	if {$fromfile} {__DrawPolyhedronUsage__	$fromfile}
 	set skipref [lindex $args [expr $flag + 1]]
 	set args [lreplace $args $flag [expr $flag + 1]]
     } else {
@@ -445,6 +477,7 @@ proc DrawPolyhedron {args} {
 
     set flag [lsearch $args "-refinesel"]
     if {$flag != -1} {
+	if {$fromfile} {__DrawPolyhedronUsage__	$fromfile}
 	set refinesel [lindex $args [expr $flag + 1]]
 	set args [lreplace $args $flag [expr $flag + 1]]
     } else {
@@ -457,7 +490,7 @@ proc DrawPolyhedron {args} {
     set ::CageMatch::REFINESEL $refinesel
    
     if {!$icosa && ( $Ttype =="triangulated" || $Ttype == "kites" || $Ttype =="pentamers" ||$Ttype =="icosahedron") } {
-	__DrawPolyhedronUsage__
+	__DrawPolyhedronUsage__ $fromfile
     }
     if {$icosa != $::CageMatch::TRACEICOSA} {
 	set  ::CageMatch::INITCLUSTER 0
@@ -466,16 +499,16 @@ proc DrawPolyhedron {args} {
     if {!$::CageMatch::TRACECOLOR} {set ::CageMatch::TRACECOLOR 1}
     if {[llength $args] >0} {
 	vmdcon -err "Unrecognized option: $args"
-	__DrawPolyhedronUsage__
+	__DrawPolyhedronUsage__ $fromfile
     }
     
     vmdcon -info "Drawing polyhedron $Ttype with options:"
-    vmdcon -info "     Draw: $drawType"
-    vmdcon -info "     molid: $molid"
-    vmdcon -info "     selection: $selection"
-    vmdcon -info "     cagesel:  $cagesel"
-    vmdcon -info "     clusterby: $clusterby"
-    vmdcon -info "     refinesel: $refinesel"
+    vmdcon -info "     -draw: $drawType"
+    vmdcon -info "     -mol: $molid"
+    vmdcon -info "     -clustersel: $selection"
+    vmdcon -info "     -cagesel:  $cagesel"
+    vmdcon -info "     -clusterby: $clusterby"
+    vmdcon -info "     -refinesel: $refinesel"
     vmdcon -info ""
     set args [list $Ttype $drawType $molid $selection $icosa]
     return [eval ::CageMatch::EnableTrace $args]
@@ -496,7 +529,9 @@ namespace eval ::CageMatch {
     variable ClusterMembers
     variable ClusterCenters
     variable ClusterSelections
-
+    variable PickPointArr
+    variable keysGoldberg
+    
     # Arrays with Neighbour info:
     variable ClusterNeighbours  
     variable PentNeighbours  
@@ -517,7 +552,7 @@ namespace eval ::CageMatch {
     # Graphical Representation variables:
     variable FACECOLOR white
     variable EDGECOLOR gray
-    variable FACEMATERIAL Transparent
+    variable FACEMATERIAL AOChalky
     variable EDGEMATERIAL AOChalky
     variable VERTEXMATERIAL AOChalky
     variable KITEAXISTWOFOLD 1
@@ -562,8 +597,44 @@ namespace eval ::CageMatch {
     foreach ctrace [trace info variable TRACECOLOR] {
 	trace remove variable TRACECOLOR {*}$ctrace
     }
-    trace add variable TRACECOLOR write ::CageMatch::ToggleColorTrace
+    if {[info exists ctrace]} {unset ctrace}
     
+    trace add variable TRACECOLOR write ::CageMatch::ToggleColorTrace
+
+    # Variables for saving vertex information
+    variable ARRAYVARS {
+	ClusterMembers
+	ClusterCenters
+	ClusterSelections
+	PickPointArr
+	keysGoldberg
+	ClusterNeighbours  
+	PentNeighbours  
+	HexNeighbours
+	SymmetryNeighbours
+	KiteNeighbours
+	TwofoldNeighbours
+	HybridNeighbours
+	GoldbergNeighbours
+	GoldbergTriNeighbours
+	Capsomers2Goldberg
+    }
+    
+    variable NOSAVE {
+	ClusterSelections
+	ClusterCenters
+	CapsidCenter
+	CageCenterSelection
+	LastDrawnPolygon
+	INITCLUSTER		 
+	PickPointArr
+	TRACEMOLID
+	TRACECOLOR
+	ARRAYVARS
+	NOSAVE
+	Capsomers2Goldberg
+	keysGoldberg
+    }
 }
 
 proc ::CageMatch::ToggleColorTrace {op name command} {
@@ -910,7 +981,7 @@ proc ::CageMatch::ClusterBySegmentsOpt {{molid top} {frame now} {selection "name
     }
   
     set CAPSOMERNUM [array size ClusterMembers]
-   
+    return [list $segNames $datapoints]
 }
 
  # determineNewCluster --
@@ -1017,9 +1088,6 @@ proc ::CageMatch::DistBasedNeighbours {} {
     set PentamerIDs {}
     set clusterIDs [array names ClusterMembers]
     
-#    set clusterlengths [lmap x $clusterIDs {expr [llength $ClusterMembers($x)]}]
-#    set PSEUDOHEX 0
-#    if {[llength [lsort -unique $clusterlengths]] == 1} {set PSEUDOHEX 1}
     if {1} {
 	foreach {i coord1} [array get ClusterCenters] {
 	    # get the six closest neighbours
@@ -1033,12 +1101,7 @@ proc ::CageMatch::DistBasedNeighbours {} {
 	    set fifth [lindex $neighbours end-1]
 	    set diff1 [expr ($seventh - $sixth)/$seventh]
 	    set diff2 [expr ($sixth - $fifth)/$fifth]
-	    #	    if {[expr $seventh - $sixth] }
-	    #check for outliers > 1.5*IQR+Q3 -> use 3*IQR for margin of error
-#	    set Q3 [lindex $neighbours 4]
-#	    set IQR [expr $Q3 - [lindex $neighbours 1]]
-#	    set outliers [expr $Q3 + 3*$IQR]
-	    # [lindex $neighbours end] > $outliers
+
 	    if {$diff1 <$diff2} {
 		set neighbours [lrange $neighbours 0 4]
 	    }
@@ -1173,7 +1236,7 @@ proc ::CageMatch::CalcPentHexNeighbours {} {
 
 # Calculate the symmetry axis vertices, the segmnames of the 6 chains that make
 # up said vertices, and the neighbour lists for the different polyhedra
-proc ::CageMatch::SymmetryAxis {{molid top} {frame now} {selection "name CA"}} {
+proc ::CageMatch::SymmetryAxis {{molid top} {frame now} {selection "name CA"} {ClusterData "None"}} {
     variable PentamerIDs
     variable HexamerIDs
     variable ClusterCenters
@@ -1192,6 +1255,7 @@ proc ::CageMatch::SymmetryAxis {{molid top} {frame now} {selection "name CA"}} {
     variable SymmetryNeighbours
     variable KiteNeighbours
     variable TwofoldNeighbours
+    variable keysGoldberg
     variable Tnumber
 
     array unset SymmetryNeighbours *
@@ -1211,39 +1275,40 @@ proc ::CageMatch::SymmetryAxis {{molid top} {frame now} {selection "name CA"}} {
 	return
     }
 
-    
-    set Tnumber [expr [llength $HexamerIDs]/10 + 1]
-    vmdcon -info "T number is: $Tnumber"
-    vmdcon -info ""
     vmdcon -info "Calculating icosahedral symmetry vertices"
     
-    set NewStart [expr $CAPSOMERNUM +1]
+    #set NewStart [expr $CAPSOMERNUM +1]
+    set NewStart [array size ClusterMembers]
+    incr NewStart
+    
     set TriangleList [LocateTriangles pentamers]
     set PentSegNames {}
     foreach i $PentamerIDs {set PentSegNames [concat $PentSegNames $ClusterMembers($i)]}
-    
-    #set all [atomselect $molid "$CAGESEL and not $CLUSTERBY $PentSegNames"]
-    set all [atomselect $molid "$CAGESEL"]
-    set segNames [lsort -unique [$all get $CLUSTERBY]]
-    $all delete
-    
-    set datapoints {}
-    foreach seg $segNames {
-    	set sel [atomselect $molid "$CLUSTERBY $seg and ($selection)" frame $frame]
-    	lappend datapoints [measure center $sel]
-    	$sel delete
-    }
 
+    if {$ClusterData == "None"} {
+	set all [atomselect $molid "$CAGESEL"]
+	set segNames [lsort -unique [$all get $CLUSTERBY]]
+	$all delete
+	
+	set datapoints {}
+	foreach seg $segNames {
+	    set sel [atomselect $molid "$CLUSTERBY $seg and ($selection)" frame $frame]
+	    lappend datapoints [measure center $sel]
+	    $sel delete
+	}
+    } else {
+	lassign $ClusterData segNames datapoints
+    }
     set FaceCenters {}
     foreach trig $TriangleList {
 	foreach {i j k} $trig break
 	lappend FaceCenters [vecscale [expr 1./3.] [vecadd $ClusterCenters($i) $ClusterCenters($j) $ClusterCenters($k)]]
     }
-    # draw color black
-    # foreach F $FaceCenters {draw sphere $F radius 5 resolution 25}
+
     set count $NewStart
     set TrifoldIDs {}
-    array unset Vertex2Cluster
+    set isGoldberg 0
+    array unset Vertex2Cluster *
     if {$Tnumber==3} {
 	set TrifoldIDs $HexamerIDs
 	foreach trig $TriangleList {
@@ -1255,7 +1320,7 @@ proc ::CageMatch::SymmetryAxis {{molid top} {frame now} {selection "name CA"}} {
     } else {
 	foreach center $FaceCenters trig $TriangleList {
 	    foreach {i j k} $trig break
-	    set Vertex2Cluster($i,$j,$k) $count
+	    #set Vertex2Cluster($i,$j,$k) $count
 	    set clustersegids {}
 	    set pointids {}
 	    while {[llength $pointids]<6} {
@@ -1272,15 +1337,26 @@ proc ::CageMatch::SymmetryAxis {{molid top} {frame now} {selection "name CA"}} {
 		lappend pointids $minI
 	    }
 	    foreach j $pointids {lappend clustersegids [lindex $segNames $j]}
-	    set sel [atomselect $molid "($selection) and $CLUSTERBY $clustersegids"]
-	    set ClusterMembers($count) $clustersegids
-	    set ClusterCenters($count) [measure center $sel]
-	    lappend TrifoldIDs $count
-	    $sel delete
-	    incr count
+	    foreach {i j k} $trig break
+	    set key [lsort $clustersegids]
+	    if {[info exists keysGoldberg($key)]} {set isGoldberg $keysGoldberg($key)} 
+	    if {$isGoldberg} {
+		lappend TrifoldIDs $isGoldberg
+		set Vertex2Cluster($i,$j,$k) $isGoldberg
+		set isGoldberg 0
+	    } else {
+		set sel [atomselect $molid "($selection) and $CLUSTERBY $clustersegids"]
+		set ClusterMembers($count) $clustersegids
+		set ClusterCenters($count) [measure center $sel]
+		set Vertex2Cluster($i,$j,$k) $count
+		lappend TrifoldIDs $count
+		$sel delete
+		incr count
+	    }
+	    
 	}
     }
-
+    
     # Obtain Twofold symmetry points
     set TwofoldIDs {}
     foreach i $PentamerIDs {
@@ -1294,7 +1370,8 @@ proc ::CageMatch::SymmetryAxis {{molid top} {frame now} {selection "name CA"}} {
     }
     # draw color purple
     # foreach name [array names EdgeCenters] {draw sphere $EdgeCenters($name) radius 5 resolution 25}
-    array unset Edges2Cluster
+    array unset Edges2Cluster *
+    set isGoldberg 0
     if {$Tnumber==4 } {
 	set TwofoldIDs $HexamerIDs
 	foreach name [array names EdgeCenters] {
@@ -1322,12 +1399,23 @@ proc ::CageMatch::SymmetryAxis {{molid top} {frame now} {selection "name CA"}} {
 		lappend pointids $minI
 	    }
 	    foreach j $pointids {lappend clustersegids [lindex $segNames $j]}
-	    set sel [atomselect $molid "($selection) and $CLUSTERBY $clustersegids"]
-	    set ClusterMembers($count) $clustersegids
-	    set ClusterCenters($count) [measure center $sel]
-	    lappend TwofoldIDs $count
-	    $sel delete
-	    incr count
+	    set key [lsort $clustersegids]
+	    if {[info exists keysGoldberg($key)]} {set isGoldberg $keysGoldberg($key)} 
+
+	    if {$isGoldberg} {
+		lappend TwofoldIDs $isGoldberg
+		set Edges2Cluster($name) $isGoldberg
+		set isGoldberg 0
+	    } else {
+		set sel [atomselect $molid "($selection) and $CLUSTERBY $clustersegids"]
+		set ClusterMembers($count) $clustersegids
+		set ClusterCenters($count) [measure center $sel]
+		set Edges2Cluster($name) $count
+		lappend TwofoldIDs $count
+		$sel delete
+		incr count
+	    }
+	    
 	}
     }
 
@@ -1385,7 +1473,7 @@ proc ::CageMatch::SymmetryAxis {{molid top} {frame now} {selection "name CA"}} {
 }
 
 # Determines the location of the vertices for the goldbergball/Hybrid representation
-proc ::CageMatch::GoldbergVertex {{molid top} {frame now} {selection "name CA"}} {
+proc ::CageMatch::GoldbergVertex {{molid top} {frame now} {selection "name CA"} {ClusterData "None"}} {
     variable PentamerIDs
     variable HexamerIDs
     variable TrifoldIDs
@@ -1403,6 +1491,7 @@ proc ::CageMatch::GoldbergVertex {{molid top} {frame now} {selection "name CA"}}
     variable ClusterNeighbours
     variable PentNeighbours
     variable HexNeighbours
+    variable keysGoldberg
     
     variable HybridNeighbours
     variable GoldbergNeighbours
@@ -1412,77 +1501,109 @@ proc ::CageMatch::GoldbergVertex {{molid top} {frame now} {selection "name CA"}}
     array unset HybridNeighbours *
     array unset GoldbergNeighbours *
     array unset GoldbergTriNeighbours *
+    array unset keysGoldberg *
 
     vmdcon -info "Calculating goldberg vertices"
-    set NewStart [llength [lsort -unique [concat $PentamerIDs $HexamerIDs $TrifoldIDs $TwofoldIDs]]]
+    #set NewStart [llength [lsort -unique [concat $PentamerIDs $HexamerIDs $TrifoldIDs $TwofoldIDs]]]
+    set NewStart [array size ClusterMembers]
     incr NewStart
     set TriangleList [LocateTriangles geodesic]
     lassign  [SetupTypes geodesic 1] indexList neighbourList
 
-    set all [atomselect $molid "$CAGESEL"]
-    set segNames [lsort -unique [$all get $CLUSTERBY]]
-    $all delete
+    if {$ClusterData == "None"} {
+	set all [atomselect $molid "$CAGESEL"]
+	set segNames [lsort -unique [$all get $CLUSTERBY]]
+	$all delete
 
-    set datapoints {}
-    foreach seg $segNames {
-    	set sel [atomselect $molid "$CLUSTERBY $seg and ($selection)" frame $frame]
-    	lappend datapoints [measure center $sel]
-    	$sel delete
+	set datapoints {}
+	foreach seg $segNames {
+	    set sel [atomselect $molid "$CLUSTERBY $seg and ($selection)" frame $frame]
+	    lappend datapoints [measure center $sel]
+	    $sel delete
+	}
+    } else {
+	lassign $ClusterData segNames datapoints 
     }
-
+    
     set FaceCenters {}
     foreach trig $TriangleList {
  	foreach {i j k} $trig break
 	lappend FaceCenters [vecscale [expr 1./3.] [vecadd $ClusterCenters($i) $ClusterCenters($j) $ClusterCenters($k)]]
     }
-#    draw color black
-#    foreach F $FaceCenters {draw sphere $F radius 5 resolution 25}
+
     set count $NewStart
     set GoldbergIDs {}
-    array unset Vertex2Cluster
+    array unset Vertex2Cluster *
     set isVertexTri 0
-#    puts "got to this point"
+
     foreach center $FaceCenters trig $TriangleList {
-	set clustersegids {}
-	set pointids {}
-	while {[llength $pointids]<6} {
-	    set mindist {}
-	    for {set i 0} {$i< [llength $datapoints]} {incr i} {
-		set coord [lindex $datapoints $i]
-		set dist [vecdist $center $coord]
-		if {[lsearch $pointids $i]!=-1} continue
-		if {$mindist>$dist || $mindist == {}} {
-		    set mindist $dist
-		    set minI $i
-		}
-	    }
-	    lappend pointids $minI
-	}
-	foreach j $pointids {lappend clustersegids [lindex $segNames $j]}
-	if { [llength [::struct::set intersect $trig $HexamerIDs]]==3} {
-	    foreach k $TrifoldIDs {
-		if {[llength [::struct::set intersect $clustersegids $ClusterMembers($k)]]==6} {
-		    set isVertexTri $k
-		    break
-		}
-	    }
-	}
-	lassign $trig i j k
-	if {$isVertexTri} {
-	    lappend GoldbergIDs $isVertexTri
-	    set Vertex2Cluster($i,$j,$k) $isVertexTri
-	    set isVertexTri 0
-	} else {
-	    set sel [atomselect $molid "($selection) and $CLUSTERBY $clustersegids"]
-	    set ClusterMembers($count) $clustersegids
-	    set ClusterCenters($count) [measure center $sel]
-	    set Vertex2Cluster($i,$j,$k) $count
-	    lappend GoldbergIDs $count
-	    $sel delete
-	    incr count
-	}
-	
+    	set clustersegids {}
+    	set pointids {}
+    	while {[llength $pointids]<6} {
+    	    set mindist {}
+    	    for {set i 0} {$i< [llength $datapoints]} {incr i} {
+    		set coord [lindex $datapoints $i]
+    		set dist [vecdist $center $coord]
+    		if {[lsearch $pointids $i]!=-1} continue
+    		if {$mindist>$dist || $mindist == {}} {
+    		    set mindist $dist
+    		    set minI $i
+    		}
+    	    }
+    	    lappend pointids $minI
+    	}
+    	foreach j $pointids {lappend clustersegids [lindex $segNames $j]}
+    	lassign $trig i j k
+    	set sel [atomselect $molid "($selection) and $CLUSTERBY $clustersegids"]
+    	set ClusterMembers($count) $clustersegids
+    	set ClusterCenters($count) [measure center $sel]
+	set keysGoldberg([lsort $clustersegids]) $count
+    	set Vertex2Cluster($i,$j,$k) $count
+    	lappend GoldbergIDs $count
+    	$sel delete
+    	incr count
     }
+    
+    # foreach center $FaceCenters trig $TriangleList {
+    # 	set clustersegids {}
+    # 	set pointids {}
+    # 	while {[llength $pointids]<6} {
+    # 	    set mindist {}
+    # 	    for {set i 0} {$i< [llength $datapoints]} {incr i} {
+    # 		set coord [lindex $datapoints $i]
+    # 		set dist [vecdist $center $coord]
+    # 		if {[lsearch $pointids $i]!=-1} continue
+    # 		if {$mindist>$dist || $mindist == {}} {
+    # 		    set mindist $dist
+    # 		    set minI $i
+    # 		}
+    # 	    }
+    # 	    lappend pointids $minI
+    # 	}
+    # 	foreach j $pointids {lappend clustersegids [lindex $segNames $j]}
+    # 	if { [llength [::struct::set intersect $trig $HexamerIDs]]==3} {
+    # 	    foreach k $TrifoldIDs {
+    # 		if {[llength [::struct::set intersect $clustersegids $ClusterMembers($k)]]==6} {
+    # 		    set isVertexTri $k
+    # 		    break
+    # 		}
+    # 	    }
+    # 	}
+    # 	lassign $trig i j k
+    # 	if {$isVertexTri} {
+    # 	    lappend GoldbergIDs $isVertexTri
+    # 	    set Vertex2Cluster($i,$j,$k) $isVertexTri
+    # 	    set isVertexTri 0
+    # 	} else {
+    # 	    set sel [atomselect $molid "($selection) and $CLUSTERBY $clustersegids"]
+    # 	    set ClusterMembers($count) $clustersegids
+    # 	    set ClusterCenters($count) [measure center $sel]
+    # 	    set Vertex2Cluster($i,$j,$k) $count
+    # 	    lappend GoldbergIDs $count
+    # 	    $sel delete
+    # 	    incr count
+    # 	}
+    # }
 
     # Criteria to find Hybrid Neighbours:
     # 1. All goldberg vertices with the capsomer vertices that make up the
@@ -1520,46 +1641,28 @@ proc ::CageMatch::GoldbergVertex {{molid top} {frame now} {selection "name CA"}}
 	    lappend CheckedNeighbours $i,$j $j,$i
 	}
     }
+    
     array set GoldbergTriNeighbours [array get GoldbergNeighbours]
     set GoldbergPentIDs {}
     set GoldbergHexIDs {}
 
     array unset Capsomers2Goldberg *
     # set the pentamers for Goldberg as the center of all hybrid neighbours,same for hexamers
+    set count -1
     foreach i $PentamerIDs {
-        # set members {}
-	# foreach j $HybridNeighbours($i) {
-	#     set members [concat $members $ClusterMembers($j)]
-	#     lappend GoldbergTriNeighbours($j) $count
-	# }
 	set GoldbergTriNeighbours($count) $HybridNeighbours($i)
 	set GoldbergNeighbours($count) {}
 	set Capsomers2Goldberg($i) $count
-	# set members  [lsort -unique $members]
-	# set sel [atomselect $molid "($selection) and $CLUSTERBY $members"]
-	# set ClusterCenters($count) [measure center $sel]
-	# $sel delete
-	# set ClusterMembers($count) $members
 	lappend GoldbergPentIDs $count
-	incr count
+	incr count -1
     }
     
     foreach i $HexamerIDs {
-        # set members {}
-	# foreach j $HybridNeighbours($i) {
-	#     set members [concat $members $ClusterMembers($j)]
-	#     	    lappend GoldbergTriNeighbours($j) $count
-	# }
 	set GoldbergTriNeighbours($count) $HybridNeighbours($i)
 	set GoldbergNeighbours($count) {}
 	set Capsomers2Goldberg($i) $count
-	# set members  [lsort -unique $members]
-	# set sel [atomselect $molid "($selection) and $CLUSTERBY $members"]
-	# set ClusterCenters($count) [measure center $sel]
-	# $sel delete
-	# set ClusterMembers($count) $members
 	lappend GoldbergHexIDs $count
-	incr count
+	incr count -1
     }
     UpdateGoldbergCenters
 }
@@ -1650,7 +1753,7 @@ proc ::CageMatch::DetMembFromPos {{Ttype "allvertex"} {molid top} {frame now} {s
 	set oldSegnames $ClusterMembers($count)
 	set ClusterMembers($count) $clustersegids
 	if {[llength [::struct::set symdiff $oldSegnames $ClusterMembers($count)]] != 0} {
-	    vmdcon -info  "Updated Vertex $count cluster members from $oldSegnames to $clustersegids"
+	    vmdcon -info  "Updated Vertex $count chains from $oldSegnames to $clustersegids"
 	}
     }
 
@@ -1694,13 +1797,23 @@ proc ::CageMatch::FindCapsidCenter {{molid top} {frame now} {selection "name CA"
 proc ::CageMatch::InitializeClusters {{molid top} {frame now} {selection "name CA"}} {
     variable INITCLUSTER
     variable KEEPSELECTIONS
+    variable TRACEICOSA
     variable REFINESEL
     variable SKIPREFINE
-
-    ClusterBySegmentsOpt $molid $frame $selection
+    variable Tnumber
+    variable HexamerIDs
+    set ClusterData [ClusterBySegmentsOpt $molid $frame $selection]
     DistBasedNeighbours
-    SymmetryAxis $molid $frame $selection
-    GoldbergVertex $molid $frame $selection
+    set Tnumber [expr [llength $HexamerIDs]/10 + 1]
+    if {$TRACEICOSA} {
+	vmdcon -info "T number is: $Tnumber"
+	vmdcon -info ""
+    }
+
+    GoldbergVertex $molid $frame $selection $ClusterData
+    SymmetryAxis $molid $frame $selection $ClusterData
+    
+    
     if {$KEEPSELECTIONS} {
 	if {$SKIPREFINE} {
 	    vmdcon -warn "Skipping refinement step"
@@ -2301,8 +2414,6 @@ proc ::CageMatch::Faceting {{radians 0}} {
 	foreach atype $angletypes {
 	    lassign [split $atype ,] point side
 	    set theta($atype) [expr acos([vecdot $vectors($point) $plane_n($side)])]
-	}
-	foreach atype $angletypes {
 	    set sum($atype)  [expr $sum($atype)  + $theta($atype)   ]
 	    set sum2($atype) [expr $sum2($atype) + $theta($atype)**2]
 	}
@@ -2452,6 +2563,16 @@ proc ::CageMatch::DrawSphere {index {molid top} {rad 5} {res 25} } {
     graphics $molid sphere $ClusterCenters($index) radius $rad resolution $res
 }
 
+proc ::CageMatch::DrawOnePick {index {molid top}} {
+    variable ClusterCenters
+    variable PickPointArr
+    
+    set drawIndex [graphics $molid pickpoint $ClusterCenters($index)]
+    set PickPointArr($drawIndex) $index
+#    puts "PickPointArr($drawIndex) is $PickPointArr($drawIndex)"
+    return $drawIndex
+}
+
 proc ::CageMatch::PrintVcolorLegend {} {
     variable PENTAMERCOLOR
     variable HEXAMERCOLOR
@@ -2469,6 +2590,26 @@ proc ::CageMatch::PrintVcolorLegend {} {
     vmdcon -info "Capsomer colors take priority over symmetry axis colors, e.g:"
     vmdcon -info "If a vertex is located on both a hexamer center and a twofold"
     vmdcon -info "symmetry axis, it will be colored as a hexamer"    
+}
+
+proc ::CageMatch::PrintVertexInfo {index} {
+    variable ClusterCenters 
+    variable ClusterMembers
+    variable TRACETYPE
+    variable CLUSTERBY
+
+    lassign  [SetupTypes $TRACETYPE 1] indexList neighbourList
+    if { [lsearch $indexList $index] == -1 } {
+	error "Vertex ID $index is not part of current polyhedron"
+    }
+    array set neighbours $neighbourList
+    vmdcon -info "Vertex ID: $index"
+    vmdcon -info "Coordinates: $ClusterCenters($index)"
+    vmdcon -info "Chains ($CLUSTERBY): $ClusterMembers($index)"
+    vmdcon -info "Current ($TRACETYPE) neighbours:$neighbours($index)"
+    vmdcon -info ""
+
+    
 }
 
 proc ::CageMatch::DrawTriangle {triangle {molid top}} {
@@ -2491,6 +2632,17 @@ proc ::CageMatch::DrawVertices {{Ttype "geodesic"} {molid top} {rad "None"} {res
     set drawList {}
     foreach i $indexList {
 	lappend drawList [DrawSphere $i $molid $rad $res]
+    }
+    return $drawList
+}
+
+proc ::CageMatch::DrawPickPoints {{Ttype "geodesic"} {molid top}} {
+    variable VERTEXRAD
+    variable VERTEXRES
+    set indexList [SetupTypes $Ttype 0]
+    set drawList {}
+    foreach i $indexList {
+	lappend drawList [DrawOnePick $i $molid] 
     }
     return $drawList
 }
@@ -2562,7 +2714,8 @@ proc ::CageMatch::DrawPolygon {Ttype {molid top} {DrawType "VE"}} {
     if {$CLEANPREVIOUS} {CleanLast $molid}
     foreach {drawVertex drawEdge drawFill} [SetupDrawing $DrawType] break
     
-    set drawList {}
+    set drawList [DrawPickPoints $Ttype $molid]
+    
     if {$Ttype=="goldberg"} {set Ttype2 "gfaces"} else {set Ttype2 $Ttype}
     if {$drawFill} {	
 	set triangles [LocateTriangles $Ttype2]
@@ -2590,7 +2743,7 @@ proc ::CageMatch::SortKiteTriangles {} {
     variable KITEAXISTWOFOLD
     set TriangleList [LocateTriangles kites]
     set NewTriangleList {}
-#    puts "original num triangles: [llength $TriangleList]"
+
     foreach trig $TriangleList {
 	set count 0
 	set count2 0
@@ -2602,7 +2755,6 @@ proc ::CageMatch::SortKiteTriangles {} {
 	    lappend NewTriangleList $trig
 	}
     }
-#    puts "Number of triangles: [llength $NewTriangleList]"
     return $NewTriangleList
 }
 
@@ -2615,7 +2767,7 @@ proc ::CageMatch::DrawKites {{molid top} {DrawType "VE"}} {
     if {$CLEANPREVIOUS} {CleanLast $molid}
     foreach {drawVertex drawEdge drawFill} [SetupDrawing $DrawType] break
     
-    set drawList {}
+    set drawList [DrawPickPoints kites $molid]
     if {$drawFill} {
 	set triangles [SortKiteTriangles]
 	foreach t $triangles {lappend drawList [DrawTriangle $t $molid]}
@@ -2648,6 +2800,8 @@ proc ::CageMatch::DrawKites {{molid top} {DrawType "VE"}} {
 # last drawn polyhedra, it has to be deleted manually
 proc ::CageMatch::CleanLast {{molid top} {ClearList "None"}} {
     variable LastDrawnPolygon
+    variable PickPointArr
+    array unset PickPointArr *
     if {$ClearList == "None"} {
 	set ClearList $LastDrawnPolygon
     }
@@ -2667,7 +2821,7 @@ proc ::CageMatch::DrawNeighbours {index  {Ttype "geodesic"} {molid top}} {
     return $drawList
 }
 
-# wrapper function for RunPolygon, used when setting trace
+# Wrapper function for RunPolygon, used when setting trace
 proc ::CageMatch::TracerFunc {name element op} {
     variable TRACETYPE
     variable TRACEDRAW
@@ -2678,7 +2832,17 @@ proc ::CageMatch::TracerFunc {name element op} {
     return
 }
 
+# Trace function for GUI vertex selection
+proc ::CageMatch::PickPointTracer {name element op} {
+    variable PickPointArr
+    global vmd_pick_graphics
 
+    set drawIndex [lindex $vmd_pick_graphics 1]
+    set index $PickPointArr($drawIndex)
+    PrintVertexInfo $index
+}
+
+# Trace function for real-time update to the drawn polyhedron 
 proc ::CageMatch::EnableTrace {Ttype {drawtype "VE"} {molid top} {selection "name CA" } {icosa 1}} {
     variable TRACETYPE
     variable TRACEDRAW
@@ -2689,6 +2853,7 @@ proc ::CageMatch::EnableTrace {Ttype {drawtype "VE"} {molid top} {selection "nam
     variable INITCLUSTER
     
     global vmd_frame
+    global vmd_pick_graphics
     
     graphics $molid delete all
     if {$molid=="top"} {set molid [molinfo top]}
@@ -2702,7 +2867,12 @@ proc ::CageMatch::EnableTrace {Ttype {drawtype "VE"} {molid top} {selection "nam
     if {$TRACEENABLED} {DisableTrace} else {set TRACEENABLED 1}
     TracerFunc 0 0 0
     trace add variable vmd_frame($TRACEMOLID) write ::CageMatch::TracerFunc
+    if {[lsearch [trace info variable vmd_pick_graphics] {write ::CageMatch::PickPointTracer}] == -1} {
+	trace add variable vmd_pick_graphics write ::CageMatch::PickPointTracer
+    }
+    	
 }
+
 
 proc ::CageMatch::DisableTrace {} {
     variable TRACETYPE
@@ -2711,6 +2881,7 @@ proc ::CageMatch::DisableTrace {} {
     variable TRACEMOLID
     
     global vmd_frame
+    global vmd_pick_graphics
     graphics $TRACEMOLID delete all
     trace remove variable vmd_frame($TRACEMOLID) write ::CageMatch::TracerFunc
 }
@@ -2726,103 +2897,8 @@ proc ::CageMatch::ColorChangeTrace {name element op} {
     if {![info exists TRACEENABLED]} {set TRACEENABLED 0}
     if {$TRACEENABLED} {
 	EnableTrace $TRACETYPE $TRACEDRAW $TRACEMOLID $TRACESELECTION $TRACEICOSA
-	#PrintVcolorLegend
     }
     
-}
-
-
-proc ::CageMatch::ExtractPoly {} {
-    variable CapsidCenter
-    variable ClusterCenters
-    variable PentamerIDs
-    variable HexamerIDs
-    variable TrifoldIDs
-    variable TwofoldIDs
-    variable GoldbergIDs
-    variable TRACETYPE 
-    variable TRACEDRAW
-    variable TRACESELECTION
-    variable TRACEMOLID
-    variable TRACEENABLED
-
-    if {!$TRACEENABLED} {error "Enable a polyhedra trace to be able to extract it"} 
-    lassign  [SetupTypes $TRACETYPE 1] indexList neighbourList
-    array set neighbours $neighbourList
-    set Natoms [expr 1 +[llength $indexList]]
-    
-    set Pids [::struct::set intersect $PentamerIDs $indexList]
-    set Hids [::struct::set intersect $HexamerIDs $indexList]
-    set Xids [::struct::set intersect $TwofoldIDs $indexList]
-    set Tids [::struct::set intersect $TrifoldIDs $indexList]
-    set Sids [::struct::set intersect $GoldbergIDs $indexList]
-
-    set Sids [::struct::set difference $Sids $Tids]
-    set Sids [::struct::set difference $Sids $Xids]
-    if {[llength $Hids] !=0} {
-	if {[llength [::struct::set difference $Hids $Xids]]==0} {set Xids {}}
-	if {[llength [::struct::set difference $Hids $Tids]]==0} {set Tids {}}
-    }
-    set count 1
-    set Vnames {P H X T S}
-    
-    foreach Ilist [list $Pids $Hids $Xids $Tids $Sids] vtype $Vnames  {
-	
-	foreach id $Ilist {
-	    set atomid2vertexid($count) $id
-	    set vertexid2atomid($id) $count
-	    lappend AtomIDList($vtype) $count
-	    incr count
-	}
-	
-    }
-
-    set newmol [mol new atoms $Natoms]
-    set Vnames [::struct::set intersect $Vnames [array names AtomIDList]]
-    foreach vtype $Vnames {	
-	puts "$vtype [llength $AtomIDList($vtype)]"
-	set AtomSelections($vtype) [atomselect $newmol "index $AtomIDList($vtype)"]
-	$AtomSelections($vtype) set name $vtype
-	$AtomSelections($vtype) set resname $vtype
-	$AtomSelections($vtype) set chain $vtype
-	set segnames {}
-	set i 1
-	foreach p [$AtomSelections($vtype) list] {
-	    lappend segnames ${vtype}${i}
-	    incr i
-	}
-	$AtomSelections($vtype) set segname $segnames
-    }
-    
-    set nf [molinfo $TRACEMOLID get numframes]
-    mol top $TRACEMOLID
-    set sel1 [atomselect $newmol "index 0"]
-    $sel1 set {name chain resname segname} {{C C C C}}    
-
-    for {set i 0} {$i < $nf} {incr i} {
-	animate dup $newmol
-	animate goto $i
-	$sel1 frame $i
-	$sel1 set {x y z} [list $CapsidCenter]
-	display update
-	foreach vtype $Vnames {
-	    $AtomSelections($vtype) frame $i
-	    set coords {}
-	    foreach p [$AtomSelections($vtype) list] {
-		lappend coords $ClusterCenters($atomid2vertexid($p))
-	    }
-	    $AtomSelections($vtype) set {x y z} $coords
-	}
-	
-
-    }
-
-    for {set i 1} {$i <$Natoms} {incr i} {
-	set sel [atomselect $newmol "index $i"]
-	$sel setbonds [list [lmap x $neighbours($atomid2vertexid($i)) {expr $vertexid2atomid($x)}]]
-	$sel delete
-    }
-    return [ array get atomid2vertexid ]
 }
 
 proc SavePolyhedron {args} {
@@ -2832,245 +2908,132 @@ proc SavePolyhedron {args} {
 	vmdcon -info ""
 	error ""
     }
+    if {!$::CageMatch::INITCLUSTER} {
+	vmdcon -err "Running DrawPolyhedron is required"
+	error ""
+    }
     return [eval ::CageMatch::SaveVertexinfo $args]
 }
 
 proc ::CageMatch::SaveVertexinfo {output} {
-    # Vertex ID variables:
-    variable PentamerIDs
-    variable HexamerIDs
-    variable TrifoldIDs
-    variable TwofoldIDs
-    variable GoldbergIDs
-    variable GoldbergPentIDs
-    variable GoldbergHexIDs
-    variable Capsomers2Goldberg 
+    variable ARRAYVARS
+    variable NOSAVE
+    set ns "::CageMatch"
+
+    set UNSAVED [lmap x $NOSAVE {list ${ns}::${x}}]
+
+    set arrays [lmap x $ARRAYVARS {list ${ns}::${x}}]
     
-    # Arrays with vertex info:
-    variable ClusterMembers
-    variable ClusterCenters
-    variable ClusterSelections
-
-    # Arrays with Neighbour info:
-    variable ClusterNeighbours  
-    variable PentNeighbours  
-    variable HexNeighbours
-    variable SymmetryNeighbours
-    variable KiteNeighbours
-    variable TwofoldNeighbours
-    variable HybridNeighbours
-    variable GoldbergNeighbours
-    variable GoldbergTriNeighbours
-    
-    # Capsid info:
-    variable CageCenterSelection
-    variable CapsidCenter
-    variable CAPSOMERNUM
-    variable Tnumber
-
-    # Graphical Representation variables:
-    variable FACECOLOR 
-    variable EDGECOLOR 
-    variable FACEMATERIAL 
-    variable EDGEMATERIAL 
-    variable VERTEXMATERIAL 
-    variable KITEAXISTWOFOLD
-    variable PENTAMERCOLOR 
-    variable HEXAMERCOLOR 
-    variable TRIFOLDCOLOR 
-    variable TWOFOLDCOLOR 
-    variable GOLDBERGCOLOR 
-    variable GOLDBERGCENTER 
-    variable VERTEXRAD 
-    variable VERTEXRES 
-    variable EDGERAD 
-    variable EDGERES 
-
-
-    variable CLUSTERBY 
-    variable NUMBERMEMBERS
-    variable KEEPSELECTIONS 
-    variable CLEANPREVIOUS 
-    variable CURRENTSELECTION 
-    variable LastDrawnPolygon
-    variable SKIPREFINE
-    variable REFINESEL
-
-    # Variables for trace:
-    variable TRACETYPE
-    variable TRACEDRAW
-    variable TRACESELECTION 
-    variable TRACEMOLID 
-    variable TRACEENABLED 
-    variable TRACEICOSA
-    variable TRACECOLOR
-    variable CAGESEL
+    set scalars {}
+    foreach var [info vars ${ns}::*] {
+	if {[lsearch $UNSAVED $var] != -1} {continue}
+	if {[lsearch $arrays $var] != -1} {continue}
+	if {[info exists $var]} {
+	    lappend scalars $var
+	} 
+    }
 
     set fp [open $output w+]
+
     try {
-	set arrayvars {
-	    ClusterMembers
-	    ClusterSelections
-	    ClusterNeighbours  
-	    PentNeighbours  
-	    HexNeighbours
-	    SymmetryNeighbours
-	    KiteNeighbours
-	    TwofoldNeighbours
-	    HybridNeighbours
-	    GoldbergNeighbours
-	    GoldbergTriNeighbours
-	}
 	
-	foreach ntype $arrayvars {
-	    puts $fp "array unset ::CageMatch::$ntype *"
-	}
-	
-	puts $fp "set ::CageMatch::CAPSOMERNUM $CAPSOMERNUM"
-
-	if {$TRACEICOSA} {puts $fp "set ::CageMatch::Tnumber $Tnumber"}
-
-	puts $fp "set ::CageMatch::CAGESEL {$CAGESEL}"
-	puts $fp "vmdcon -info \"loading Vertex IDs ...\""
-	puts $fp "set ::CageMatch::PentamerIDs [list $PentamerIDs]"
-	puts $fp "set ::CageMatch::HexamerIDs  [list $HexamerIDs]"
-	puts $fp "set ::CageMatch::TrifoldIDs  [list $TrifoldIDs]"
-	puts $fp "set ::CageMatch::TwofoldIDs  [list $TwofoldIDs]"
-	puts $fp "set ::CageMatch::GoldbergIDs   [list $GoldbergIDs]"
-	puts $fp "set ::CageMatch::GoldbergPentIDs [list $GoldbergPentIDs]"
-	puts $fp "set ::CageMatch::GoldbergHexIDs [list $GoldbergHexIDs]"
-	
-	puts $fp "vmdcon -info \"loading cluster members ...\""
-	puts $fp "array unset ::CageMatch::ClusterMembers *"
-	foreach {i segnames} [array get ClusterMembers] {
-	    puts $fp "set ::CageMatch::ClusterMembers($i) [list $ClusterMembers($i)]"
-	}
-
-	puts $fp "vmdcon -info \"loading neighbour info ...\""
-	set neighbourTypes {
-	    ClusterNeighbours
-	    PentNeighbours
-	    KiteNeighbours
-	    HybridNeighbours
-	    SymmetryNeighbours
-	    Capsomers2Goldberg
-	}
-	foreach i $PentamerIDs {
-	    foreach ntype $neighbourTypes {
-		try { puts $fp "set ::CageMatch::${ntype}($i) [list [set ${ntype}($i)]]"} finally {continue}
+	foreach var $arrays {puts $fp "array unset $var *" }
+	foreach var $arrays {
+	    if {[lsearch $UNSAVED $var] != -1} {continue}
+	    foreach {key value} [array get $var] {
+		puts $fp "set ${var}($key) [list $value]"
 	    }
 	}
+	puts $fp "set ${ns}::INITCLUSTER 1"
+	puts $fp "set ${ns}::TRACECOLOR 0"
+	foreach var $scalars { puts $fp "set $var {[set $var]}"}
+	puts $fp "set ${ns}::TRACECOLOR 1"
 
-	set neighbourTypes {ClusterNeighbours HexNeighbours HybridNeighbours Capsomers2Goldberg}
-	foreach i $HexamerIDs {
-	    foreach ntype $neighbourTypes {
-		try { puts $fp "set ::CageMatch::${ntype}($i) [list [set ${ntype}($i)]]"} finally {continue}
-	    }
-	}
-
-	set neighbourTypes {TwofoldNeighbours KiteNeighbours SymmetryNeighbours}    	
-	foreach i $TwofoldIDs {
-	    foreach ntype $neighbourTypes {
-		try { puts $fp "set ::CageMatch::${ntype}($i) [list [set ${ntype}($i)]]"} finally {continue}
-	    }
-	}
 	
-	set neighbourTypes {KiteNeighbours}    	
-	foreach i $TrifoldIDs {
-	    foreach ntype $neighbourTypes {
-		try { puts $fp "set ::CageMatch::${ntype}($i) [list [set ${ntype}($i)]]"} finally {continue}
-	    }
-	}
-
-	set neighbourTypes {HybridNeighbours GoldbergNeighbours GoldbergTriNeighbours}    	
-	foreach i [concat $GoldbergIDs $GoldbergPentIDs $GoldbergHexIDs] {
-	    foreach ntype $neighbourTypes {
-		try { puts $fp "set ::CageMatch::${ntype}($i) [list [set ${ntype}($i)]]"} finally {continue}
-	    }
-	}
-
-
-	puts $fp "vmdcon -info \"loading graphical representation variables\""
-	set colors {
-	    PENTAMERCOLOR 
-	    HEXAMERCOLOR 
-	    TRIFOLDCOLOR 
-	    TWOFOLDCOLOR 
-	    GOLDBERGCOLOR
-	}
-	puts $fp "set ::CageMatch::TRACECOLOR 0"	
-	# foreach col $colors {
-	#     puts $fp "trace remove variable ::CageMatch::${col} write ::CageMatch::ColorChangeTrace"
-	# }
-	set graphvars {
-	    FACECOLOR 
-	    EDGECOLOR 
-	    FACEMATERIAL 
-	    EDGEMATERIAL 
-	    VERTEXMATERIAL 
-	    KITEAXISTWOFOLD
-	    PENTAMERCOLOR 
-	    HEXAMERCOLOR 
-	    TRIFOLDCOLOR 
-	    TWOFOLDCOLOR 
-	    GOLDBERGCOLOR 
-	    GOLDBERGCENTER 
-	    VERTEXRAD 
-	    VERTEXRES 
-	    EDGERAD 
-	    EDGERES 
-	}
-	foreach ntype $graphvars {
-	    puts $fp "set ::CageMatch::${ntype} {[set ${ntype}]}"
-	}
-	puts $fp "set ::CageMatch::TRACECOLOR 1"
-	# foreach col $colors {
-	#     puts $fp "trace add variable ::CageMatch::${col} write ::CageMatch::ColorChangeTrace"
-	# }
-	puts $fp "vmdcon -info \"loading trace variables\""
-	set tracevars { TRACETYPE TRACEDRAW TRACESELECTION TRACEMOLID TRACEENABLED TRACEICOSA CLUSTERBY}
-	foreach ntype $tracevars {
-	    puts $fp "set ::CageMatch::${ntype} {[set ${ntype}]}"
-	}
-
-	variable KEEPSELECTIONS 
-	variable CLEANPREVIOUS 
-	variable CURRENTSELECTION
-
-	puts $fp "set ::CageMatch::KEEPSELECTIONS $KEEPSELECTIONS"
-	puts $fp "set ::CageMatch::CLEANPREVIOUS $CLEANPREVIOUS"
-	puts $fp "set ::CageMatch::CURRENTSELECTION {$CURRENTSELECTION}"
-	puts $fp "set ::CageMatch::SKIPREFINE $SKIPREFINE"
-	puts $fp "set ::CageMatch::REFINESEL $REFINESEL"
-	puts $fp "set ::CageMatch::INITCLUSTER 1"
-	if {$KEEPSELECTIONS} {
-	    puts $fp  "vmdcon -info \"Making atomselections ...\""
-	    puts $fp "::CageMatch::SelectCluster $TRACEMOLID now {$TRACESELECTION}"
-	    
-	}
-	
-#	puts $fp "vmdcon -info \"Drawing polyhedron\""
-#	puts $fp "DrawPolyhedron kleetope"
-#	if {$TRACEICOSA} {
-# 	    puts $fp "DrawPolyhedron kites"
-	# 	}
-	puts $fp "::CageMatch::UpdateVertices allvertex now $TRACEMOLID {$TRACESELECTION}"
- 	puts $fp "DrawPolyhedron $TRACETYPE"
     } finally {
 	close $fp
     }
+    
+    
+}
+
+proc __LoadPolyhedronUsage__ {} {
+    vmdcon -info "Load Vertex information from file."
+    vmdcon -info "Usage: LoadPolyhedron <polyhedron file> \[options\]"
+    vmdcon -info ""
+    vmdcon -info "Options are:"
+    vmdcon -info "-mol <molid>     -- Cage molid. Default: top."
+    vmdcon -info "-poly <polyhedron> -- Polyhedron to draw. Default: geodesic."
+    
+    error ""
 }
 
 proc LoadPolyhedron {args} {
-    if {[llength $args] !=1} {
-        vmdcon -info "Read vertex definitions and polyhedron connectivity from file."
-	vmdcon -info "Usage: LoadPolyhedron <polyhedron file>"
-	vmdcon -info ""
-	error ""
+    if {[llength $args] <1} {__DrawPolyhedronUsage__ 1}
+
+    set input [lindex $args 0 0]
+    set args [lreplace $args 0 0]
+
+    set flag [lsearch $args "-mol"]
+    if {$flag != -1} {
+	set molid [lindex $args [expr $flag +1]]
+	set args [lreplace $args $flag [expr $flag +1]]
+    } else {
+	set molid top
     }
-    set output [lindex $args 0]
-    source $output
+
+    set flag [lsearch $args "-poly"]
+    if {$flag != -1} {
+	set poly [lindex $args [expr $flag +1]]
+	set args [lreplace $args $flag [expr $flag +1]]
+    } else {
+	set poly geodesic
+    }
+
+    eval ::CageMatch::LoadVertexinfo $input
+
+    if {$::CageMatch::KEEPSELECTIONS} {
+    	::CageMatch::SelectCluster $molid now $::CageMatch::TRACESELECTION
+    }
+
+    ::CageMatch::UpdateVertices allvertex now $molid $::CageMatch::TRACESELECTION
+    eval DrawPolyhedron $poly -mol $molid -fromfile $args
 }
+
+proc ::CageMatch::LoadVertexinfo {filename} {
+    set fp [open $filename r]
+    set data [read $fp ]
+    close $fp
+    
+    set i [interp create -safe]
+    try {
+	$i alias set ::CageMatch::LoadSet
+	$i alias array ::CageMatch::LoadArray
+	$i eval $data
+	
+    } finally {
+	interp delete $intp
+    }
+}
+
+
+proc ::CageMatch::LoadSet {varname args} {
+    if {![string match "::CageMatch::*" $varname]} {
+        error "LoadSet: refusing to set '$varname' — only ::CageMatch:: variables allowed"
+    }
+    uplevel #0 [list set $varname {*}$args]
+}
+
+proc ::CageMatch::LoadArray {subcmd varname args} {
+    if {$subcmd ne "unset"} {
+        error "LoadArray: only 'array unset' is permitted in polyhedron files"
+    }
+    if {![string match "::CageMatch::*" $varname]} {
+        error "LoadArray: refusing to modify '$varname'"
+    }
+    uplevel #0 [list array unset $varname {*}$args]
+}
+
 
 # get the shortest path tree (SPT) for unfolding the polyhedron
 proc ::CageMatch::GetSPT {{rootface "None"}} {
@@ -3473,4 +3436,3 @@ proc ::CageMatch::GetUpPath {faceid} {
     }
     return $pathList
 }
-
