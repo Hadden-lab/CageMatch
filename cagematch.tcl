@@ -1112,61 +1112,6 @@ proc ::CageMatch::DistBasedNeighbours {} {
     CalcPentHexNeighbours
 }
 
-# Calculates the neighbour list for each capsomer vertex
-# neighbour lists here are used for pentamers,
-# geodesic, and hexamers polyhedrons
-proc ::CageMatch::CalcNeighbours {} {
-    variable ClusterCenters
-    variable ClusterNeighbours
-    variable PentNeighbours
-    variable HexNeighbours
-    variable PentamerIDs
-    variable HexamerIDs
-
-    array unset ClusterNeighbours *
-    array unset PentNeighbours *
-    array unset HexNeighbours *
-    
-    foreach i $PentamerIDs {set ClusterNeighbours($i) {}}
-    foreach i $HexamerIDs {set ClusterNeighbours($i) {}}
-    foreach i $PentamerIDs {
-	set coords1 $ClusterCenters($i)
-	while {[llength $ClusterNeighbours($i)] < 5} {
-	    set mindist {} 
-	    foreach j $HexamerIDs {
-		if {$i==$j} continue
-		if {[lsearch $ClusterNeighbours($i) $j]!= -1} continue
-		set dist [vecdist $coords1 $ClusterCenters($j)]
-		if { $mindist > $dist || $mindist == {}} {
-		    set mindist $dist
-		    set minj $j	
-		}
-	    }
-	    if {[lsearch $ClusterNeighbours($i) $minj]==-1} {lappend ClusterNeighbours($i) $minj}
-	    if {[lsearch $ClusterNeighbours($minj) $i]==-1} {lappend ClusterNeighbours($minj) $i}
-	}
-    }
-    
-    foreach i $HexamerIDs {
-	set coords1 $ClusterCenters($i)
-	while {[llength $ClusterNeighbours($i)] < 6} {
-	    set mindist {}
-	    foreach j $HexamerIDs {
-		if {$i==$j} continue
-		if {[lsearch $ClusterNeighbours($i) $j]!= -1} continue
-		set dist [vecdist $coords1 $ClusterCenters($j)]
-		if { $mindist > $dist || $mindist == {}} {
-		    set mindist $dist
-		    set minj $j	
-		}
-	    }
-	    if {[lsearch $ClusterNeighbours($i) $minj]==-1} {lappend ClusterNeighbours($i) $minj}
-	    if {[lsearch $ClusterNeighbours($minj) $i]==-1} {lappend ClusterNeighbours($minj) $i}
-	}
-    }
-    CalcPentHexNeighbours
-}
-
 proc ::CageMatch::CalcPentHexNeighbours {} {
     variable ClusterCenters
     variable ClusterNeighbours
@@ -2132,7 +2077,7 @@ proc ::CageMatch::CalcTrianglePlane {i j k} {
     return [list $N $D]
 }
 
-proc ::CageMatch::PyramidVolumeVertex {triangle} {
+proc ::CageMatch::PyramidVolume {triangle} {
     variable ClusterCenters
     variable CapsidCenter
     lassign $triangle i j k 
@@ -2142,20 +2087,6 @@ proc ::CageMatch::PyramidVolumeVertex {triangle} {
     
     set uxv [veccross $u $v]
     return [expr 1./6.*abs([vecdot $d $uxv])]
-}
-
-proc ::CageMatch::PyramidVolume {triangle} {
-    variable ClusterCenters
-    variable CapsidCenter
-
-    set Area [TriangleArea $triangle]
-    foreach {i j k} $triangle break 
-    set plane [CalcTrianglePlane $i $j $k]
-    foreach {ABC D} $plane break
-    
-    set height [ expr abs([vecdot $ABC $CapsidCenter]- $D)/[veclength $ABC]]
-
-    return [expr ($Area*$height)/3.0]
 }
 
 proc Volume {} {
@@ -2176,7 +2107,7 @@ proc ::CageMatch::CapsidVolume {Ttype} {
 	set triangles [LocateTriangles $Ttype]
     }
     set sum 0
-    foreach t $triangles {set sum [expr $sum + [PyramidVolumeVertex $t]]}
+    foreach t $triangles {set sum [expr $sum + [PyramidVolume $t]]}
     return $sum
 }
 
@@ -3108,7 +3039,7 @@ proc ::CageMatch::Unfold1Face_top_down {faceid} {
     }
 
     $sel delete
-    set sel [atomselect top "$CLUSTERBY $segments"]
+    set sel [atomselect $TRACEMOLID "$CLUSTERBY $segments"]
     
     $sel move $t_matrix
     $sel delete
@@ -3247,7 +3178,7 @@ proc PolyhedronNet {args} {
 	}
 	if {!$::CageMatch::TRACEICOSA} {
 	    vmdcon -err "PolyhedronNet only works for icosahedral systems"
-	    error
+	    error ""
 	}
 	if {[llength $args]} {__PolyNetUsage__}
 	uplevel {StopPolyhedron 1}
@@ -3421,9 +3352,4 @@ proc ::CageMatch::CompareIvec {Ivec {refvec {0 0 1}}} {
     }
     
     return [list $maxvec $angle] 
-}
-
-
-if {0} {
-    source $clusdir/not_distrubute_functions.tcl
 }
