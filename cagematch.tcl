@@ -523,7 +523,6 @@ namespace eval ::CageMatch {
     variable GoldbergIDs
     variable GoldbergPentIDs
     variable GoldbergHexIDs
-    variable Capsomers2Goldberg
     
     # Arrays with vertex info:
     variable ClusterMembers
@@ -617,7 +616,6 @@ namespace eval ::CageMatch {
 	HybridNeighbours
 	GoldbergNeighbours
 	GoldbergTriNeighbours
-	Capsomers2Goldberg
     }
     
     variable NOSAVE {
@@ -632,7 +630,6 @@ namespace eval ::CageMatch {
 	TRACECOLOR
 	ARRAYVARS
 	NOSAVE
-	Capsomers2Goldberg
 	keysGoldberg
     }
 }
@@ -836,26 +833,8 @@ proc ::CageMatch::UpdateClosestClusters {clusters new_cluster closest_clusters m
     return $closest_clusters
 }
 
-proc ::CageMatch::JoinNN {closest_clusters clusters datapoints} {
-    set mindist {}
-    set counter 0
-    foreach  cl $closest_clusters {
-	lassign $cl idx closest dist
-	if { $mindist == {} || $mindist > $dist } {
-	    set mindist    $dist
-	    set minidx     $idx
-	    set minclosest $closest
-	    set minj $counter
-	}
-	incr counter
-    }
-    set new_cluster [determineNewCluster $clusters $minidx $minclosest $datapoints]
-    set clusters    [lreplace $clusters $minidx $minidx $new_cluster]
-    set clusters    [lreplace $clusters $minclosest $minclosest]
-    return [list $clusters $new_cluster $minidx $minclosest $minj]
-}
 
-# Vertex detection clustering using  $CLUSTERBY (segnames or fragment) to get vertices for polihedra 
+# Vertex detection clustering using  $CLUSTERBY (segnames or fragment) to get vertices for polyhedra 
 
 #    Basic cluster analysis:
 #    - A dataset (a list of lists) consists of records describing the data
@@ -1071,6 +1050,17 @@ proc ::CageMatch::RemoveExtraClusters {clusterList} {
     
 }
 
+proc ::CageMatch::CalcTNumber {} {
+    variable HexamerIDs
+    variable TRACEICOSA
+    variable Tnumber
+    set Tnumber [expr [llength $HexamerIDs]/10 + 1]
+    if {$TRACEICOSA} {
+	vmdcon -info "T number is: $Tnumber"
+	vmdcon -info ""
+    }
+}
+
 proc ::CageMatch::DistBasedNeighbours {} {
     variable ClusterMembers
     variable ClusterCenters
@@ -1087,52 +1077,39 @@ proc ::CageMatch::DistBasedNeighbours {} {
     set HexamerIDs {}
     set PentamerIDs {}
     set clusterIDs [array names ClusterMembers]
-    
-    if {1} {
-	foreach {i coord1} [array get ClusterCenters] {
-	    # get the six closest neighbours
-	    set dists [lmap x $clusterIDs {expr [vecdist $coord1 $ClusterCenters($x)]} ]
-	    set neighbours [lrange [lsort -real $dists] 1 7] ;# get first 7 neighbours not including itself
-	    set seventh [lindex $neighbours end]
-	    set neighbours [lrange $neighbours 0 end-1] ;# only 6 neighbours
 
-	    #if (7th- 6th)/7th > (6th -5th)/5th -> 5th and 6th are more similar -> hexavalent position
-	    set sixth [lindex $neighbours end]
-	    set fifth [lindex $neighbours end-1]
-	    set diff1 [expr ($seventh - $sixth)/$seventh]
-	    set diff2 [expr ($sixth - $fifth)/$fifth]
+    foreach {i coord1} [array get ClusterCenters] {
+	# get the six closest neighbours
+	set dists [lmap x $clusterIDs {expr [vecdist $coord1 $ClusterCenters($x)]} ]
+	set neighbours [lrange [lsort -real $dists] 1 7] ;# get first 7 neighbours not including itself
+	set seventh [lindex $neighbours end]
+	set neighbours [lrange $neighbours 0 end-1] ;# only 6 neighbours
 
-	    if {$diff1 <$diff2} {
-		set neighbours [lrange $neighbours 0 4]
-	    }
-	    set neighbourIDs {}
-	    foreach item [lsort -unique $neighbours] {
-		set matches [lsearch -all $dists $item]
-		set neighbourIDs [concat $neighbourIDs [lmap x $matches {expr [lindex $clusterIDs $x]} ]]
-	    }
-	    
-	    if {[llength $neighbourIDs] == 6} {
-		lappend HexamerIDs $i		
-	    } elseif {[llength $neighbourIDs] == 5} {
-		lappend PentamerIDs $i
-	    }
-	    set ClusterNeighbours($i) $neighbourIDs
+	#if (7th- 6th)/7th > (6th -5th)/5th -> 5th and 6th are more similar -> hexavalent position
+	set sixth [lindex $neighbours end]
+	set fifth [lindex $neighbours end-1]
+	set diff1 [expr ($seventh - $sixth)/$seventh]
+	set diff2 [expr ($sixth - $fifth)/$fifth]
+
+	if {$diff1 <$diff2} {
+	    set neighbours [lrange $neighbours 0 4]
 	}
-	vmdcon -info "There are [llength $PentamerIDs] pentavalent capsomers"
-	vmdcon -info "There are [llength $HexamerIDs] hexavalent capsomers"
-	CalcPentHexNeighbours
-    } else {
-	foreach {i segnames} [array get ClusterMembers] {
-	    if {[llength $segnames] == 5} {
-		lappend PentamerIDs $i
-	    } else {
-		lappend HexamerIDs $i
-	    }
+	set neighbourIDs {}
+	foreach item [lsort -unique $neighbours] {
+	    set matches [lsearch -all $dists $item]
+	    set neighbourIDs [concat $neighbourIDs [lmap x $matches {expr [lindex $clusterIDs $x]} ]]
 	}
-	vmdcon -info "There are [llength $PentamerIDs] pentavalent capsomers"
-	vmdcon -info "There are [llength $HexamerIDs] hexavalent capsomers"
-	CalcNeighbours
+	
+	if {[llength $neighbourIDs] == 6} {
+	    lappend HexamerIDs $i		
+	} elseif {[llength $neighbourIDs] == 5} {
+	    lappend PentamerIDs $i
+	}
+	set ClusterNeighbours($i) $neighbourIDs
     }
+    vmdcon -info "There are [llength $PentamerIDs] pentavalent capsomers"
+    vmdcon -info "There are [llength $HexamerIDs] hexavalent capsomers"
+    CalcPentHexNeighbours
 }
 
 # Calculates the neighbour list for each capsomer vertex
@@ -1496,7 +1473,6 @@ proc ::CageMatch::GoldbergVertex {{molid top} {frame now} {selection "name CA"} 
     variable HybridNeighbours
     variable GoldbergNeighbours
     variable GoldbergTriNeighbours
-    variable Capsomers2Goldberg
     
     array unset HybridNeighbours *
     array unset GoldbergNeighbours *
@@ -1646,13 +1622,11 @@ proc ::CageMatch::GoldbergVertex {{molid top} {frame now} {selection "name CA"} 
     set GoldbergPentIDs {}
     set GoldbergHexIDs {}
 
-    array unset Capsomers2Goldberg *
     # set the pentamers for Goldberg as the center of all hybrid neighbours,same for hexamers
     set count -1
     foreach i $PentamerIDs {
 	set GoldbergTriNeighbours($count) $HybridNeighbours($i)
 	set GoldbergNeighbours($count) {}
-	set Capsomers2Goldberg($i) $count
 	lappend GoldbergPentIDs $count
 	incr count -1
     }
@@ -1660,7 +1634,6 @@ proc ::CageMatch::GoldbergVertex {{molid top} {frame now} {selection "name CA"} 
     foreach i $HexamerIDs {
 	set GoldbergTriNeighbours($count) $HybridNeighbours($i)
 	set GoldbergNeighbours($count) {}
-	set Capsomers2Goldberg($i) $count
 	lappend GoldbergHexIDs $count
 	incr count -1
     }
@@ -1800,16 +1773,9 @@ proc ::CageMatch::InitializeClusters {{molid top} {frame now} {selection "name C
     variable TRACEICOSA
     variable REFINESEL
     variable SKIPREFINE
-    variable Tnumber
-    variable HexamerIDs
     set ClusterData [ClusterBySegmentsOpt $molid $frame $selection]
     DistBasedNeighbours
-    set Tnumber [expr [llength $HexamerIDs]/10 + 1]
-    if {$TRACEICOSA} {
-	vmdcon -info "T number is: $Tnumber"
-	vmdcon -info ""
-    }
-
+    CalcTNumber
     GoldbergVertex $molid $frame $selection $ClusterData
     SymmetryAxis $molid $frame $selection $ClusterData
     
@@ -1881,7 +1847,7 @@ proc ::CageMatch::UpdateVertices {{Ttype "geodesic"} {frame now} {molid top} {se
 	}
 	FindCapsidCenter $molid $frame $selection
     }
-    if {$Ttype=="goldberg" || $Ttype=="allvertices"} {UpdateGoldbergCenters}
+    if {$Ttype=="goldberg" || $Ttype=="allvertex"} {UpdateGoldbergCenters}
 }
 
 proc ::CageMatch::UpdateGoldbergCenters {} {
@@ -2020,7 +1986,7 @@ proc Member2Vertex {args} {
     if {$num==1} {
 	set Ttype allvertex
     } elseif {[lindex $args 1] != "-current"} {
-	__V2MUsage__
+	__M2VUsage__
     } else {	 
 	set Ttype $::CageMatch::TRACETYPE
     }
@@ -2260,13 +2226,13 @@ proc __FacetingUsage__ {} {
     vmdcon -info "                    5, 3, and 2.   5 for the five-fold, 3 for the three-fold, and 2"
     vmdcon -info "                    for the two-fold symmetry axes. “all” is equivalent to \{5 3 2\}."
     vmdcon -info "\[kite_normal\] -- Optional, determines which kite normal to  use (left, right, or"
-    vmdcon -info "                   average). Default is average"
+    vmdcon -info "                   sum). Default is sum"
     vmdcon -info ""
     vmdcon -info "Output:"
-    vmdcon -info "Returns average angles and standard deviation for each symmetry axes in the order"
-    vmdcon -info "they were provided. Two-fold symmetry angle with respect to the average kite-plane"
-    vmdcon -info "normal return two angles, one for each two-fold axes. Two-fold symmetry angle with"
-    vmdcon -info "respect to the left/right kite-plane only returns one angle, to the respective"
+    vmdcon -info "Returns average protrusion angles and standard deviation for each symmetry axes in the order"
+    vmdcon -info "they were provided. Two-fold symmetry angle with respect to the sum of kite-plane"
+    vmdcon -info "normals returns two angles, one for each two-fold axes. Two-fold symmetry angle with"
+    vmdcon -info "respect to the left/right kite-plane only returns one angle, corresponding to the respective"
     vmdcon -info "left/right two-fold symmetry axis."
     vmdcon -info ""
     error ""
@@ -2297,7 +2263,7 @@ proc Faceting {args} {
 	(left|right) {
 	    set normals [list $normals]
 	}
-	(average|def_val) {
+	(sum|def_val) {
 	    set normals {ave}
 	}
 	default {
@@ -2393,21 +2359,25 @@ proc ::CageMatch::Faceting {{radians 0}} {
 	set vecPT2 [vecnorm [vecsub $pent $two2]]	
 	set vecTT1 [vecnorm [vecsub $tri  $two1]]
 	set vecTT2 [vecnorm [vecsub $tri  $two2]]
-
-	if { [vecdot $rlplane_n $vecPT1] < 0 } {
+	set vecTC1 [vecnorm [vecsub $two1 $CapsidCenter]]	
+	set vecTC2 [vecnorm [vecsub $two2 $CapsidCenter]]
+	
+	if { [vecdot $rlplane_n $vecTC1] > 0 } {
 	    set plane_n(r) [vecnorm [veccross $vecTT1 $vecPT1]]
 	    set plane_n(l) [vecnorm [vecinvert [veccross $vecTT2 $vecPT2]]]
-	    set rtwo $two1
-	    set ltwo $two2
+	    set rtwo $vecTC1
+	    set ltwo $vecTC2
 	    
 	} else {
 	    set plane_n(l) [vecnorm [vecinvert [veccross $vecTT1 $vecPT1]]]
 	    set plane_n(r) [vecnorm [veccross $vecTT2 $vecPT2]]
-	    set ltwo $two1
-	    set rtwo $two2
+	    set ltwo $vecTC1
+	    set rtwo $vecTC2
+	    
 	}
-	set vectors(2r) [vecnorm [vecsub $rtwo $CapsidCenter]]
-	set vectors(2l) [vecnorm [vecsub $ltwo $CapsidCenter]]
+	set vectors(2r) $rtwo
+	set vectors(2l) $ltwo
+	
 	#sum of plane vectors
 	set plane_n(a) [vecnorm [vecadd $plane_n(l) $plane_n(r)]]
 	
@@ -2957,17 +2927,6 @@ proc ::CageMatch::SaveVertexinfo {output} {
     
 }
 
-proc __LoadPolyhedronUsage__ {} {
-    vmdcon -info "Load Vertex information from file."
-    vmdcon -info "Usage: LoadPolyhedron <polyhedron file> \[options\]"
-    vmdcon -info ""
-    vmdcon -info "Options are:"
-    vmdcon -info "-mol <molid>     -- Cage molid. Default: top."
-    vmdcon -info "-poly <polyhedron> -- Polyhedron to draw. Default: geodesic."
-    
-    error ""
-}
-
 proc LoadPolyhedron {args} {
     if {[llength $args] <1} {__DrawPolyhedronUsage__ 1}
 
@@ -3012,7 +2971,7 @@ proc ::CageMatch::LoadVertexinfo {filename} {
 	$i eval $data
 	
     } finally {
-	interp delete $intp
+	interp delete $i
     }
 }
 
@@ -3097,7 +3056,6 @@ proc ::CageMatch::Unfold1Face_top_down {faceid} {
     variable GoldbergPentIDs
     variable GoldbergHexIDs
     variable GoldbergTriNeighbours
-    variable Capsomers2Goldberg
     variable HybridNeighbours
     variable ClusterNeighbours
     variable VProjections
@@ -3124,9 +3082,6 @@ proc ::CageMatch::Unfold1Face_top_down {faceid} {
 	set shared_edge [vecscale -1 $shared_edge]
     }
     set shared_center [vecscale 0.5 [vecadd $posedv2 $posedv1]]
-#    set c1 $Capsomers2Goldberg($parent)
-#    set c2 $Capsomers2Goldberg($faceid)
-
     set sel [atomselect $TRACEMOLID "$CLUSTERBY $ClusterMembers($faceid)"]
     lassign [measure inertia $sel] COM Ivec
     lassign [CompareIvec $Ivec {0.0 0.0 1.0}] normal1 angle
@@ -3169,7 +3124,6 @@ proc ::CageMatch::AlignRoot2xy {} {
     variable ClusterCenters
     variable ClusterMembers
     variable HybridNeighbours
-    variable Capsomers2Goldberg
     variable CLUSTERBY
     variable TRACEMOLID
     variable TRACESELECTION
@@ -3258,7 +3212,8 @@ proc PolyhedronNet {args} {
     set oldcolor $::CageMatch::EDGECOLOR
     set oldrad $::CageMatch::EDGERAD
     set ids [concat $::CageMatch::PentamerIDs $::CageMatch::HexamerIDs]
-
+    
+    
     if {[llength $args]< 1 } {__PolyNetUsage__}
     set faceid [lindex $args 0]
     set args [lrange $args 1 end]
@@ -3289,7 +3244,11 @@ proc PolyhedronNet {args} {
     try {
 	if {[lsearch $ids $faceid] == -1 && $faceid !=0 } {
 	    __PolyNetUsage__
-	}	
+	}
+	if {!$::CageMatch::TRACEICOSA} {
+	    vmdcon -err "PolyhedronNet only works for icosahedral systems"
+	    error
+	}
 	if {[llength $args]} {__PolyNetUsage__}
 	uplevel {StopPolyhedron 1}
 	if {$faceid} {
@@ -3435,4 +3394,36 @@ proc ::CageMatch::GetUpPath {faceid} {
 	set parent $SPTParentEdge($parent)
     }
     return $pathList
+}
+
+proc ::CageMatch::CompareIvec {Ivec {refvec {0 0 1}}} {
+    set i 0
+    set maxdot 0
+    set refvec [vecnorm $refvec]
+    foreach I $Ivec {
+	set I [vecnorm $I]
+	set dot [vecdot $I $refvec]
+	set absdot [expr abs($dot)]
+
+	if {$absdot > $maxdot} {
+	    set maxdot $absdot
+	    set maxi $i
+	    if {$dot >0} {
+		set maxvec $I
+		set angle [expr 2*3.14159265359 - acos($dot)]
+	    } else {
+		set maxvec [vecscale -1 $I]
+		set angle [expr acos($dot)]
+	    }
+	    
+	}    
+	incr i
+    }
+    
+    return [list $maxvec $angle] 
+}
+
+
+if {0} {
+    source $clusdir/not_distrubute_functions.tcl
 }
